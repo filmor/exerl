@@ -1,0 +1,12 @@
+- Rebar3
+    - Compiler plugin
+    - Dependency provider for mix
+    - Test runner for ExUnit
+    - Protocol consolidation
+    - Configuration: Auto-download, embed(!)
+    - Allow downloading into _build/
+    - Allow including in releases
+    - Allow including in escripts
+- Escript for the auto-download
+- Integration for ErlangLS/ElixirLS?
+- Use in ierl to remove mix.exs
