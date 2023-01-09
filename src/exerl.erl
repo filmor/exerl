@@ -9,6 +9,8 @@
     compile/2
 ]).
 
+-export([init/1]).
+
 find() ->
     exerl_find:from_executable().
 
@@ -42,3 +44,11 @@ start_mix() ->
 
 compile(Paths, Dest) ->
     exerl_compile:compile(Paths, Dest).
+
+
+-spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
+init(State) ->
+    start(),
+    State1 = rebar_state:prepend_compilers(State, [exerl_r3_compile]),
+    State2 = rebar_state:add_resource(State1, {elixir, exerl_r3_resource}),
+    {ok, State2}.
