@@ -12,6 +12,8 @@
 
 -include_lib("providers/include/providers.hrl").
 
+-define(D(Fmt, Args), rebar_log:log(diagnostic, Fmt, Args)).
+
 context(AppInfo) ->
     EbinDir = rebar_app_info:ebin_dir(AppInfo),
     Mappings = [{".beam", EbinDir}],
@@ -42,13 +44,46 @@ dependencies(Source, SourceDir, Dirs) ->
     [].
 
 compile(Source, [{_, OutDir}], Config, ErlOpts) ->
-    rebar_log:log(diagnostic, "Source: ~p, OutDir: ~p", [Source, OutDir]),
+    ?D("Source: ~p, OutDir: ~p", [Source, OutDir]),
     {ok, Modules, _Warnings} = 'Elixir.Kernel.ParallelCompiler':compile_to_path(
         [list_to_binary(Source)],
         list_to_binary(OutDir)
     ),
+    % Write list of modules to file
+    % file:write_file(
+
     ok.
 
 clean(Files, AppInfo) ->
-    % TODO
+    OutDir = rebar_app_info:out_dir(AppInfo),
+
+    FilesSet = sets:from_list(Files, [{version, 2}]),
+
+    ToDelete =
+        lists:filtermap(
+            fun(Beam) ->
+                rebar_log:log(diagnostic, "Beam: ~s", [Beam]),
+                case beam_lib:chunks(Beam, [compile_info]) of
+                    {ok, {Mod, [{compile_info, CompileInfo}]}} ->
+                        case proplists:get_value(source, CompileInfo) of
+                            Source when is_map_key(Source, FilesSet) ->
+                                ?D("Beam file ~s was compiled from ~s, deleting", [
+                                    Beam,
+                                    Source
+                                ]),
+                                {true, Beam};
+                            _Else ->
+                                false
+                        end;
+                    _Else ->
+                        false
+                end
+            end,
+            filelib:wildcard(filename:join([OutDir, "ebin", "*.beam"]))
+        ),
+    rebar_file_utils:delete_each(ToDelete),
+    ok.
+
+lock_file_name(AppInfo) ->
+    rebar_app_info:dir(AppInfo),
     ok.
