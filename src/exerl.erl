@@ -34,6 +34,9 @@ set_code_path(Path) ->
 start() ->
     set_code_path(),
     {ok, _} = application:ensure_all_started(elixir),
+    % Prevent Elixir from messing with Erlang's handler config
+    application:load(logger),
+    application:set_env(logger, handle_otp_reports, false),
     {ok, _} = application:ensure_all_started(logger),
     ok.
 
