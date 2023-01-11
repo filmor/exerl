@@ -29,6 +29,10 @@ context(AppInfo) ->
 
     _RebarOpts = rebar_app_info:opts(AppInfo),
 
+    % Ensure that the Elixir compiler does not load the previously built
+    % binaries and complains about it
+    code:del_path(EbinDir),
+
     #{
         src_dirs => ExistingSrcDirs,
         src_ext => ".ex",
@@ -40,22 +44,20 @@ context(AppInfo) ->
 needed_files(_Graph, FoundFiles, _, _AppInfo) ->
     {{[], []}, {{[], FoundFiles}, []}}.
 
-dependencies(Source, SourceDir, Dirs) ->
+dependencies(_Source, _SourceDir, _Dirs) ->
     [].
 
-compile(Source, [{_, OutDir}], Config, ErlOpts) ->
-    ?D("Source: ~p, OutDir: ~p", [Source, OutDir]),
+compile(Source, [{_, OutDir}], _Config, _Opts) ->
     {ok, Modules, _Warnings} = 'Elixir.Kernel.ParallelCompiler':compile_to_path(
         [list_to_binary(Source)],
         list_to_binary(OutDir)
     ),
-    % Write list of modules to file
-    % file:write_file(
+    ?D("Compiled ~p from ~s", [Modules, Source]),
 
     ok.
 
 clean(Files, AppInfo) ->
-    OutDir = rebar_app_info:out_dir(AppInfo),
+    OutDir = rebar_app_info:ebin_dir(AppInfo),
 
     FilesSet = sets:from_list(Files, [{version, 2}]),
 
@@ -67,8 +69,9 @@ clean(Files, AppInfo) ->
                     {ok, {Mod, [{compile_info, CompileInfo}]}} ->
                         case proplists:get_value(source, CompileInfo) of
                             Source when is_map_key(Source, FilesSet) ->
-                                ?D("Beam file ~s was compiled from ~s, deleting", [
+                                ?D("Beam file ~s (~p) was compiled from ~s, deleting", [
                                     Beam,
+                                    Mod,
                                     Source
                                 ]),
                                 {true, Beam};
@@ -79,11 +82,7 @@ clean(Files, AppInfo) ->
                         false
                 end
             end,
-            filelib:wildcard(filename:join([OutDir, "ebin", "*.beam"]))
+            filelib:wildcard(filename:join([OutDir, "*.beam"]))
         ),
     rebar_file_utils:delete_each(ToDelete),
-    ok.
-
-lock_file_name(AppInfo) ->
-    rebar_app_info:dir(AppInfo),
     ok.
