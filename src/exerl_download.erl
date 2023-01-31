@@ -48,7 +48,7 @@ download_and_extract(Release) ->
                 [{body_format, binary}]
             ),
             {{_, 200, _}, _Headers, _Body} = Result
-            % TODO: Use crypto to check the hash
+        % TODO: Use crypto to check the hash
     end,
 
     OutPath = exerl_path:elixir_path(Version),

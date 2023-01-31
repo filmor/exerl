@@ -26,7 +26,6 @@ run(Command, Path) ->
     [Exe | Args] = Command,
 
     Options0 = [
-        in,
         binary,
         {args, Args},
         exit_status,
@@ -51,7 +50,7 @@ run(Command, Path) ->
             {ok, Output} ->
                 Output;
             {error, {_Rc, _Output} = Err} ->
-                error({cargo_error, Err})
+                error({cmd_error, Err})
         end
     after
         port_close(Port)

@@ -48,7 +48,6 @@ start_mix() ->
 compile(Paths, Dest) ->
     exerl_compile:compile(Paths, Dest).
 
-
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
     start(),
