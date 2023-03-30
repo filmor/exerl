@@ -24,17 +24,6 @@ build(AppInfo) ->
         meck:new('Elixir.Mix.Dep.Loader', [passthrough]),
         meck:expect('Elixir.Mix.Dep.Loader', children, 0, fun() -> [] end),
 
-        meck:new('Elixir.Mix.Utils', [passthrough]),
-        meck:expect(
-            'Elixir.Mix.Utils',
-            symlink_or_copy,
-            3,
-            fun
-                (_, A, A) -> ok;
-                (A, B, C) -> meck:passthrough([A, B, C])
-            end
-        ),
-
         rebar_api:debug("Loading mix.exs...", []),
 
         load_mix_exs(),
