@@ -19,10 +19,29 @@ lock(AppInfo, _) ->
     rebar_app_info:source(AppInfo).
 
 needs_update(_AppInfo, _) ->
+    error(needs_update),
     false.
 
-download(TmpDir, AppInfo, State, _) ->
+download(TmpDir, AppInfo, State, _MyState) ->
+    Name = rebar_app_info:name(AppInfo),
+    {elixir, Version0} = rebar_app_info:source(AppInfo),
+    Version = [list_to_integer(V) || V <- string:split(Version0, ".", all)],
+    Path = exerl_path:elixir_path(Version),
+
+    exerl_download:download_and_extract(Version),
+
+    Path1 = filename:join([Path, lib, Name]),
+
+    lists:foreach(
+      fun (P) ->
+            rebar_api:info("Copying from ~s...", [P]),
+              ec_file:copy(P, TmpDir)
+      end,
+    filelib:wildcard(filename:join(Path1, "*"))
+     ),
+
     ok.
 
-make_vsn(_, _) ->
+make_vsn(Param, State) ->
+    rebar_api:info("~p~n~p", [Param, State]),
     {plain, "1.0.0"}.
