@@ -48,6 +48,7 @@ dependencies(_Source, _SourceDir, _Dirs) ->
     [].
 
 compile(Source, [{_, OutDir}], _Config, _Opts) ->
+    exerl_util:ensure_started(mix),
     {ok, Modules, _Warnings} = 'Elixir.Kernel.ParallelCompiler':compile_to_path(
         [list_to_binary(Source)],
         list_to_binary(OutDir)
