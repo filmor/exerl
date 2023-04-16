@@ -53,10 +53,16 @@ init(State) ->
     % os:putenv("MIX_ENV", "prod"),
     os:putenv("MIX_DEPS_PATH", filename:absname("./_build/default/lib")),
     os:putenv("MIX_BUILD_PATH", filename:absname("./_build/default")),
-    set_code_path(),
-    {ok, _} = application:ensure_all_started(mix),
+
+    % TODO: Either ensure that dependencies are used (resources) or gather from
+    % executable.
+    %
+    % set_code_path(),
+    %
+    % TODO: Load on-demand instead
+    % {ok, _} = application:ensure_all_started(mix),
     State1 = rebar_state:prepend_compilers(State, [exerl_r3_compile]),
     State2 = rebar_state:add_resource(State1, {elixir, exerl_r3_resource}),
     State3 = rebar_state:add_project_builder(State2, mix, exerl_r3_builder),
-    exerl_mix_converger:register(),
+    % exerl_mix_converger:register(),
     {ok, State3}.

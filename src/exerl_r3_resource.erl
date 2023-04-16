@@ -23,22 +23,38 @@ needs_update(_AppInfo, _) ->
     false.
 
 download(TmpDir, AppInfo, State, _MyState) ->
+    try
+        do_download(TmpDir, AppInfo, State, _MyState)
+    catch
+        Cat:Reason:St ->
+            E = erl_error:format_exception(Cat, Reason, St),
+            rebar_api:error("Error: ~s", [E]),
+            E
+    end.
+
+do_download(TmpDir, AppInfo, _State, _MyState) ->
     Name = rebar_app_info:name(AppInfo),
+    % AppOpts = rebar_app_info:opts(AppInfo),
+    % AppOpts1 = rebar_dir:src_dirs(AppOpts, []),
+
     {elixir, Version0} = rebar_app_info:source(AppInfo),
     Version = [list_to_integer(V) || V <- string:split(Version0, ".", all)],
     Path = exerl_path:elixir_path(Version),
 
-    exerl_download:download_and_extract(Version),
+    rebar_api:info("Downloading elixir version ~p", [Version]),
+    Err = catch exerl_download:download_and_extract(Version),
+    rebar_api:info("Done: ~p", [Err]),
 
     Path1 = filename:join([Path, lib, Name]),
+    rebar_api:info("Downloaded to ~s", [Path1]),
 
-    lists:foreach(
-      fun (P) ->
-            rebar_api:info("Copying from ~s...", [P]),
-              ec_file:copy(P, TmpDir)
-      end,
-    filelib:wildcard(filename:join(Path1, "*"))
-     ),
+    _Dir = rebar_app_info:dir(AppInfo),
+    true = filelib:is_dir(TmpDir),
+    true = filelib:is_dir(Path1),
+
+    ec_file:copy(Path1, TmpDir, [recursive]),
+
+    true = filelib:is_dir(filename:join([Path1, "ebin"])),
 
     ok.
 

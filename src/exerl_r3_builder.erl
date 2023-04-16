@@ -10,6 +10,9 @@
 -define(Conv, 'Elixir.Mix.Dep.Converger').
 
 build(AppInfo) ->
+    application:ensure_all_started(logger),
+    application:ensure_all_started(mix),
+
     CurrentPwd = file:get_cwd(),
     NewCwd = rebar_app_info:dir(AppInfo),
     rebar_api:debug("Switching cwd to ~p...", [NewCwd]),
@@ -19,10 +22,17 @@ build(AppInfo) ->
         % meck:expect('Elixir.Mix.Dep', check_lock, 1, fun(Dep) ->
         %     Dep#{ status => {ok, []} }
         % end),
-        {ok, _} = application:ensure_all_started(meck),
+        application:ensure_all_started(meck),
 
         meck:new('Elixir.Mix.Dep.Loader', [passthrough]),
         meck:expect('Elixir.Mix.Dep.Loader', children, 0, fun() -> [] end),
+
+        meck:new('Elixir.Mix.Utils', [passthrough]),
+        meck:expect('Elixir.Mix.Utils', symlink_or_copy, 3, fun(_, A, A) ->
+                                                                    ok;
+                                                               (A, B, C) ->
+                                                                    meck:passthrough([A, B, C])
+                                                            end),
 
         rebar_api:debug("Loading mix.exs...", []),
 

@@ -21,43 +21,47 @@ download_and_extract(Release) ->
         checksum_url := ChecksumUrl
     } = Release,
 
-    Temp = exerl_temp:mkdtemp(),
-    ReleaseZip = filename:join([Temp, "release.zip"]),
+    OutPath = exerl_path:elixir_path(Version),
 
-    httpc:request(
-        get,
-        {
-            DataUrl,
-            [{"User-Agent", "exerl/0"}]
-        },
-        [{ssl, exerl_tls:opts()}],
-        [{stream, ReleaseZip}]
-    ),
-
-    case ChecksumUrl of
-        not_found ->
+    case filelib:is_dir(OutPath) of
+        true ->
             ok;
-        _ ->
-            {ok, Result} = httpc:request(
+        false ->
+            Temp = exerl_temp:mkdtemp(),
+            ReleaseZip = filename:join([Temp, "release.zip"]),
+
+            httpc:request(
                 get,
                 {
                     DataUrl,
                     [{"User-Agent", "exerl/0"}]
                 },
                 [{ssl, exerl_tls:opts()}],
-                [{body_format, binary}]
+                [{stream, ReleaseZip}]
             ),
-            {{_, 200, _}, _Headers, _Body} = Result
-        % TODO: Use crypto to check the hash
-    end,
 
-    OutPath = exerl_path:elixir_path(Version),
-    file:del_dir_r(OutPath),
-    filelib:ensure_path(filename:join([OutPath, "dir"])),
+            case ChecksumUrl of
+                not_found ->
+                    ok;
+                _ ->
+                    {ok, Result} = httpc:request(
+                        get,
+                        {
+                            DataUrl,
+                            [{"User-Agent", "exerl/0"}]
+                        },
+                        [{ssl, exerl_tls:opts()}],
+                        [{body_format, binary}]
+                    ),
+                    {{_, 200, _}, _Headers, _Body} = Result
+                % TODO: Use crypto to check the hash
+            end,
 
-    zip:extract(ReleaseZip, [{cwd, OutPath}]),
+            file:del_dir_r(OutPath),
+            filelib:ensure_path(filename:join([OutPath, "dir"])),
 
-    ok.
+            zip:extract(ReleaseZip, [{cwd, OutPath}])
+    end.
 
 find_newest_version() ->
     find_newest_version([]).
