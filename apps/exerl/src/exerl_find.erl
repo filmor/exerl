@@ -25,3 +25,4 @@ from_executable() ->
     ],
 
     list_to_binary(exerl_exec:run(Args)).
+

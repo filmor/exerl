@@ -1,12 +1,56 @@
--module(exerl_download).
+-module(exerl_pkg).
 
 -export([
-    download_and_extract/0,
-    download_and_extract/1,
+    get_release/1,
+    assets/1,
+    version/1,
+    tag/1,
+
     find_newest_version/0,
     find_newest_version/1,
     get_releases/0
 ]).
+
+-record(release, {
+    tag :: binary(),
+    version :: verl:version(),
+    assets :: #{binary() => binary()}
+}).
+
+download_release(#release{assets = Assets}, Dest) ->
+    OtpVersion = erlang:system_info(otp_release),
+    DataName = list_to_binary(io_lib:format("elixir-otp-~s.zip", [OtpVersion])),
+    ChecksumName = <<DataName/binary, ".sha256sum">>,
+    DataUrl = maps:get(DataName, Assets),
+    ChecksumUrl = maps:get(ChecksumName, Assets),
+
+    filelib:ensure_dir(Dest),
+
+    exerl_util:download_to_file(DataUrl, Dest),
+
+    ok;
+download_release(Tag, Dest) when is_binary(Tag) ->
+    download_release(get_release(Tag), Dest).
+
+get_release(Tag) when is_binary(Tag) ->
+    Path = list_to_binary(["/repos/elixir-lang/elixir/releases/tags/", Tag]),
+    GHRelease = exerl_util:github_api(Path),
+    to_rec(GHRelease).
+
+to_rec(#{<<"tag_name">> := Tag, <<"assets">> := Assets}) ->
+    {ok, Version} = verl:parse(binary:part(Tag, {1, byte_size(Tag) - 1})),
+    #release{
+        tag = Tag,
+        version = Version,
+        assets = maps:from_list([
+            {Name, DownloadUrl}
+         || #{<<"name">> := Name, <<"browser_download_url">> := DownloadUrl} <- Assets
+        ])
+    }.
+
+assets(#release{assets = A}) -> A.
+tag(#release{tag = T}) -> T.
+version(#release{version = V}) -> V.
 
 download_and_extract() ->
     download_and_extract([]).
@@ -29,6 +73,7 @@ download_and_extract(Release) ->
         false ->
             Temp = exerl_temp:mkdtemp(),
             ReleaseZip = filename:join([Temp, "release.zip"]),
+            exerl_util:download_to_file(DataUrl, ReleaseZip),
 
             httpc:request(
                 get,
@@ -78,64 +123,5 @@ find_newest_version(VersionPrefix) ->
     ).
 
 get_releases() ->
-    {ok, Result} = httpc:request(
-        get,
-        {
-            <<"https://api.github.com/repos/elixir-lang/elixir/releases">>,
-            [
-                {"Accept", "application/vnd.github+json"},
-                {"X-GitHub-Api-Version", "2022-11-28"},
-                {"User-Agent", "exerl/0"}
-            ]
-        },
-        [{ssl, exerl_tls:opts()}],
-        [{body_format, binary}]
-    ),
-
-    {{_, 200, _}, _Headers, Body} = Result,
-
-    Decoded = jsone:decode(Body),
-
-    OtpVersion = erlang:system_info(otp_release),
-    DataUrl = list_to_binary(
-        io_lib:format("elixir-otp-~s.zip", [OtpVersion])
-    ),
-    ChecksumUrl = <<DataUrl/binary, ".sha256sum">>,
-
-    [
-        #{
-            version => parse_version(maps:get(<<"tag_name">>, T)),
-            data_url =>
-                case get_url_by_filename(T, DataUrl) of
-                    not_found ->
-                        get_url_by_filename(T, <<"Precompiled.zip">>);
-                    Else ->
-                        Else
-                end,
-            checksum_url => get_url_by_filename(T, ChecksumUrl)
-        }
-     || T = #{<<"prerelease">> := Pre} <- Decoded, not Pre
-    ].
-
-get_url_by_filename(#{<<"assets">> := Assets}, Filename) ->
-    try
-        lists:foreach(
-            fun
-                (#{<<"name">> := Name} = A) when Name =:= Filename ->
-                    throw({found, A});
-                (#{<<"name">> := _}) ->
-                    ok
-            end,
-            Assets
-        ),
-        not_found
-    catch
-        {found, #{<<"browser_download_url">> := Url}} ->
-            Url
-    end.
-
-parse_version(<<"v", Rest/binary>>) ->
-    [
-        element(1, string:to_integer(I))
-     || I <- string:split(Rest, ".", all)
-    ].
+    Decoded = exerl_util:github_api("/repos/elixir-lang/elixir/releases"),
+    [to_rec(T) || T = #{<<"prerelease">> := Pre} <- Decoded, not Pre].
