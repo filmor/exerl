@@ -27,8 +27,8 @@ init(Type, _State) ->
 lock(AppInfo, _) ->
     rebar_app_info:source(AppInfo).
 
-needs_update(_AppInfo, _) ->
-    error(needs_update),
+needs_update(AppInfo, _) ->
+    % TODO: Take floating version into account
     false.
 
 download(TmpDir, AppInfo, State, _MyState) ->
