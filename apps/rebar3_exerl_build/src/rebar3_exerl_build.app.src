@@ -6,6 +6,7 @@
         kernel,
         stdlib,
         exerl,
+        meck,
         rebar3_exerl_dep
     ]},
     {env, []},
