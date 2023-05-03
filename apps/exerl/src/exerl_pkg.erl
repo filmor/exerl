@@ -52,62 +52,6 @@ assets(#release{assets = A}) -> A.
 tag(#release{tag = T}) -> T.
 version(#release{version = V}) -> V.
 
-download_and_extract() ->
-    download_and_extract([]).
-
-download_and_extract(VersionPrefix) when is_list(VersionPrefix) ->
-    Rel = find_newest_version(VersionPrefix),
-    download_and_extract(Rel);
-download_and_extract(Release) ->
-    #{
-        version := Version,
-        data_url := DataUrl,
-        checksum_url := ChecksumUrl
-    } = Release,
-
-    OutPath = exerl_path:elixir_path(Version),
-
-    case filelib:is_dir(OutPath) of
-        true ->
-            ok;
-        false ->
-            Temp = exerl_temp:mkdtemp(),
-            ReleaseZip = filename:join([Temp, "release.zip"]),
-            exerl_util:download_to_file(DataUrl, ReleaseZip),
-
-            httpc:request(
-                get,
-                {
-                    DataUrl,
-                    [{"User-Agent", "exerl/0"}]
-                },
-                [{ssl, exerl_tls:opts()}],
-                [{stream, ReleaseZip}]
-            ),
-
-            case ChecksumUrl of
-                not_found ->
-                    ok;
-                _ ->
-                    {ok, Result} = httpc:request(
-                        get,
-                        {
-                            DataUrl,
-                            [{"User-Agent", "exerl/0"}]
-                        },
-                        [{ssl, exerl_tls:opts()}],
-                        [{body_format, binary}]
-                    ),
-                    {{_, 200, _}, _Headers, _Body} = Result
-                % TODO: Use crypto to check the hash
-            end,
-
-            file:del_dir_r(OutPath),
-            filelib:ensure_path(filename:join([OutPath, "dir"])),
-
-            zip:extract(ReleaseZip, [{cwd, OutPath}])
-    end.
-
 find_newest_version() ->
     find_newest_version([]).
 

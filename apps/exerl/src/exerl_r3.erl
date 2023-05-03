@@ -27,10 +27,10 @@ init(State) ->
     % exerl_mix_converger:register(),
     {ok, State3}.
 
-ensure_pkg(State, Version) ->
+ensure_pkg(State, Tag) ->
     CacheDir = cache_dir(State),
 
-    Dest = list_to_binary(["elixir-", Version, ".ez"]),
+    Dest = list_to_binary(["elixir-", Tag, ".ez"]),
     DestPath = filename:join(CacheDir, Dest),
 
     case filelib:is_regular(DestPath) of
@@ -41,7 +41,7 @@ ensure_pkg(State, Version) ->
             DataName = list_to_binary(["elixir-otp-", OtpVersion, ".zip"]),
             ChecksumName = <<DataName/binary, ".sha256sum">>,
 
-            Rel = exerl_pkg:get_release(list_to_binary(["v", Version])),
+            Rel = exerl_pkg:get_release(Tag),
             Assets = exerl_pkg:assets(Rel),
             DataUrl = maps:get(DataName, Assets),
             ChecksumUrl = maps:get(ChecksumName, Assets),

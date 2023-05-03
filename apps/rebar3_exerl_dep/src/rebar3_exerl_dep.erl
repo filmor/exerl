@@ -13,10 +13,11 @@
 ]).
 
 -behaviour(rebar_resource_v2).
+-define(RES, elixir).
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
-    State1 = rebar_state:add_resource(State, {elixir, ?MODULE}),
+    State1 = rebar_state:add_resource(State, {?RES, ?MODULE}),
     {ok, State1}.
 
 -spec init(atom(), rebar_state:t()) -> {ok, rebar_resource_v2:resource()}.
@@ -25,9 +26,17 @@ init(Type, _State) ->
     {ok, Resource}.
 
 lock(AppInfo, _) ->
-    rebar_app_info:source(AppInfo).
+    case rebar_app_info:source(AppInfo) of
+        {?RES, Version} ->
+            Name = rebar_app_info:name(AppInfo),
+            Version1 = find_matching(Version),
+            {?RES, Name, Version1};
+        {?RES, Name, Version} ->
+            Version1 = find_matching(Version),
+            {?RES, Name, Version1}
+    end.
 
-needs_update(AppInfo, _) ->
+needs_update(_AppInfo, _) ->
     % TODO: Take floating version into account
     false.
 
@@ -42,47 +51,62 @@ download(TmpDir, AppInfo, State, _MyState) ->
     end.
 
 do_download(TmpDir, AppInfo, State, _MyState) ->
-    Name = rebar_app_info:name(AppInfo),
     % AppOpts = rebar_app_info:opts(AppInfo),
     % AppOpts1 = rebar_dir:src_dirs(AppOpts, []),
 
-    {elixir, Version0} = rebar_app_info:source(AppInfo),
-    Version = [list_to_integer(V) || V <- string:split(Version0, ".", all)],
-    L = length(Version),
-    L = 3,
+    {?RES, Name, {tag, Tag}} = lock(AppInfo, State),
 
-    Path = exerl_r3:ensure_pkg(State, list_to_binary([Version0])),
+    Path = exerl_r3:ensure_pkg(State, Tag),
     rebar_log:log(debug, "Downloaded precompiled Elixir to ~s", [Path]),
     extract_lib_from_pkg(Path, Name, TmpDir),
 
     ok.
 
 make_vsn(Param, State) ->
-    rebar_api:info("~p~n~p", [Param, State]),
-    {plain, "1.0.0"}.
+    {error, "Replacing version of type elixir is not supported"}.
 
 extract_lib_from_pkg(Filename, App, Dest) ->
     Prefix = lists:flatten(["lib/", binary_to_list(App), "/"]),
     PrefixLen = length(Prefix),
 
     {ok, _} = zip:foldl(
-      fun (Name, _GetInfo, GetBin, Acc) ->
-        case lists:prefix(Prefix, Name) andalso lists:last(Name) =/= $/ of
-            true ->
-                rebar_log:log(debug, "Found file ~s in zip", [Name]),
+        fun(Name, _GetInfo, GetBin, Acc) ->
+            case lists:prefix(Prefix, Name) andalso lists:last(Name) =/= $/ of
+                true ->
+                    rebar_log:log(debug, "Found file ~s in zip", [Name]),
 
-                % Unpack
-                NameWithoutPrefix = lists:nthtail(PrefixLen, Name),
-                Dest1 = filename:join(Dest, NameWithoutPrefix),
-                filelib:ensure_dir(Dest1),
-                file:write_file(Dest1, GetBin()),
-                Acc;
-            false ->
-                Acc
-        end
-      end,
-      ok,
-      binary_to_list(Filename)
-     ),
+                    % Unpack
+                    NameWithoutPrefix = lists:nthtail(PrefixLen, Name),
+                    Dest1 = filename:join(Dest, NameWithoutPrefix),
+                    filelib:ensure_dir(Dest1),
+                    file:write_file(Dest1, GetBin()),
+                    Acc;
+                false ->
+                    Acc
+            end
+        end,
+        ok,
+        binary_to_list(Filename)
+    ),
 
     ok.
+
+find_matching({tag, Tag}) ->
+    {tag, Tag};
+find_matching(Requirement) ->
+    {ok, Req0} = verl:parse_requirement(list_to_binary("~> " ++ Requirement)),
+    Req1 = verl:compile_requirement(Req0),
+    Releases = [
+        Release
+     || Release <- exerl_pkg:get_releases(),
+        verl:is_match(exerl_pkg:version(Release), Req1)
+    ],
+
+    [BestMatch | _] = lists:sort(
+        fun(Lhs, Rhs) ->
+            verl:gt(exerl_pkg:version(Lhs), exerl_pkg:version(Rhs))
+        end,
+        Releases
+    ),
+
+    {tag, exerl_pkg:tag(BestMatch)}.

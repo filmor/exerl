@@ -70,6 +70,3 @@ load_mix_exs() ->
     ?Code:compile_file(<<"mix.exs">>),
     ?Code:put_compiler_option(no_warn_undefined, Undefined),
     ok.
-
-build_lock() ->
-    ok.
