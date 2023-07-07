@@ -1,10 +1,10 @@
 {"1.2.0",
-[{<<"elixir">>,{elixir,"1.14.4"},0},
+[{<<"elixir">>,{elixir,<<"elixir">>,{tag,<<"v1.14.5">>}},0},
  {<<"getopt">>,{pkg,<<"getopt">>,<<"1.0.1">>},1},
  {<<"jsone">>,{pkg,<<"jsone">>,<<"1.7.0">>},0},
- {<<"logger">>,{elixir,"1.14.4"},0},
+ {<<"logger">>,{elixir,<<"logger">>,{tag,<<"v1.14.5">>}},0},
  {<<"meck">>,{pkg,<<"meck">>,<<"0.9.2">>},0},
- {<<"mix">>,{elixir,"1.14.4"},0},
+ {<<"mix">>,{elixir,<<"mix">>,{tag,<<"v1.14.5">>}},0},
  {<<"providers">>,{pkg,<<"providers">>,<<"1.8.1">>},0},
  {<<"thoas">>,{pkg,<<"thoas">>,<<"0.4.0">>},0},
  {<<"verl">>,{pkg,<<"verl">>,<<"1.1.1">>},0}]}.

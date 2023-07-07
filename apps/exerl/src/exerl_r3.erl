@@ -24,7 +24,7 @@ init(State) ->
     State1 = rebar_state:prepend_compilers(State, [exerl_r3_compile]),
     State2 = rebar_state:add_resource(State1, {elixir, exerl_r3_resource}),
     State3 = rebar_state:add_project_builder(State2, mix, exerl_r3_builder),
-    % exerl_mix_converger:register(),
+    exerl_mix_converger:register(),
     {ok, State3}.
 
 ensure_pkg(State, Tag) ->

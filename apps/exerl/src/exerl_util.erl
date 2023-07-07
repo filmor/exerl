@@ -4,8 +4,7 @@
     ensure_started/1,
     tls_opts/0,
     download_to_file/2,
-    github_api/1,
-    checksum_file/2
+    github_api/1
 ]).
 
 -define(USER_AGENT, "exerl/0").
@@ -82,8 +81,3 @@ github_api(Path) ->
     {{_, 200, _}, _Headers, Body} = Result,
     {ok, Map} = thoas:decode(Body),
     Map.
-
-checksum_file(Algorithm, Filename) ->
-    F = file:open(Filename, []),
-    C = crypto:hash_init(Algorithm),
-    ok.

@@ -7,6 +7,7 @@
 -define(Code, 'Elixir.Code').
 -define(Dep, 'Elixir.Mix.Dep').
 -define(Mix, 'Elixir.Mix').
+-define(Hex, 'Elixir.Hex').
 -define(Conv, 'Elixir.Mix.Dep.Converger').
 
 build(AppInfo) ->
@@ -18,22 +19,8 @@ build(AppInfo) ->
     rebar_api:debug("Switching cwd to ~p...", [NewCwd]),
     ok = file:set_cwd(NewCwd),
     try
-        % meck:new('Elixir.Mix.Dep', [passthrough]),
-        % meck:expect('Elixir.Mix.Dep', check_lock, 1, fun(Dep) ->
-        %     Dep#{ status => {ok, []} }
-        % end),
-        application:ensure_all_started(meck),
-
-        catch meck:new('Elixir.Mix.Dep.Loader', [passthrough]),
-        meck:expect('Elixir.Mix.Dep.Loader', children, 0, fun() -> [] end),
-
-        catch meck:new('Elixir.Mix.Utils', [passthrough]),
-        meck:expect('Elixir.Mix.Utils', symlink_or_copy, 3, fun
-            (_, A, A) ->
-                ok;
-            (A, B, C) ->
-                meck:passthrough([A, B, C])
-        end),
+        rebar_api:debug("Ensuring hex is installed...", []),
+        ?Task:run(<<"local.hex">>, [<<"--force">>, <<"--if-missing">>]),
 
         rebar_api:debug("Loading mix.exs...", []),
 
@@ -42,14 +29,10 @@ build(AppInfo) ->
         ?Task:run(<<"loadconfig">>),
 
         rebar_api:debug("Loading dependencies...", []),
-        Env = ?Mix:env(),
-        Target = ?Mix:target(),
-        ?Conv:converge([], [{env, Env}, {target, Target}], [], fun(A, B, C) ->
-            rebar_api:debug("Converge callback ~p ~p ~p", [A, B, C])
-        end),
-        ?Dep:load_and_cache(),
-
-        ?Task:run(<<"loadpaths">>, [<<"--no-archives-check">>]),
+        ?Task:run(<<"loadpaths">>, [
+            <<"--no-deps-check">>,
+            <<"--no-archives-check">>
+        ]),
         rebar_api:info("Loaded paths", []),
 
         rebar_api:info("Config: ~p", ['Elixir.Mix.Project':config()]),
@@ -60,7 +43,6 @@ build(AppInfo) ->
         % code:purge(?Project),
         ok
     after
-        application:stop(meck),
         file:set_cwd(CurrentPwd)
     end.
 
