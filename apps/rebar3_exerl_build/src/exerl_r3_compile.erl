@@ -15,6 +15,7 @@
 -define(D(Fmt, Args), rebar_log:log(diagnostic, Fmt, Args)).
 
 context(AppInfo) ->
+    try
     EbinDir = rebar_app_info:ebin_dir(AppInfo),
     Mappings = [{".beam", EbinDir}],
 
@@ -39,7 +40,11 @@ context(AppInfo) ->
         include_dirs => [],
         out_mappings => Mappings,
         dependencies_opts => []
-    }.
+    }
+    catch Error:Reason:St ->
+              ?D("~s", [erl_error:format_exception(Error, Reason, St)]),
+              error(bla)
+    end.
 
 needed_files(_Graph, FoundFiles, _, _AppInfo) ->
     {{[], []}, {{[], FoundFiles}, []}}.

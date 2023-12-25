@@ -13,6 +13,7 @@
 build(AppInfo) ->
     exerl_util:ensure_started(logger),
     exerl_util:ensure_started(mix),
+    exerl_util:ensure_started(eex),
 
     CurrentPwd = file:get_cwd(),
     NewCwd = rebar_app_info:dir(AppInfo),
@@ -33,13 +34,12 @@ build(AppInfo) ->
             <<"--no-deps-check">>,
             <<"--no-archives-check">>
         ]),
-        rebar_api:info("Loaded paths", []),
 
-        rebar_api:info("Config: ~p", ['Elixir.Mix.Project':config()]),
-        rebar_api:info("AppPath: ~p", ['Elixir.Mix.Project':app_path('Elixir.Mix.Project':config())]),
+        rebar_api:debug("Config: ~p", ['Elixir.Mix.Project':config()]),
+        rebar_api:debug("AppPath: ~p", ['Elixir.Mix.Project':app_path('Elixir.Mix.Project':config())]),
 
         ?Task:run(<<"compile">>, []),
-        rebar_api:info("Compiled", []),
+        rebar_api:debug("Compiled", []),
         % code:purge(?Project),
         ok
     after

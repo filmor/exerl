@@ -55,6 +55,7 @@ do_download(TmpDir, AppInfo, State, _MyState) ->
     % AppOpts1 = rebar_dir:src_dirs(AppOpts, []),
 
     {?RES, Name, {tag, Tag}} = lock(AppInfo, State),
+    rebar_log:log(debug, "Ensuring that tag ~s is cached", [Tag]),
 
     Path = exerl_r3:ensure_pkg(State, Tag),
     rebar_log:log(debug, "Downloaded precompiled Elixir to ~s", [Path]),
@@ -62,7 +63,7 @@ do_download(TmpDir, AppInfo, State, _MyState) ->
 
     ok.
 
-make_vsn(Param, State) ->
+make_vsn(_Param, _State) ->
     {error, "Replacing version of type elixir is not supported"}.
 
 extract_lib_from_pkg(Filename, App, Dest) ->
@@ -92,10 +93,12 @@ extract_lib_from_pkg(Filename, App, Dest) ->
     ok.
 
 find_matching({tag, Tag}) ->
-    {tag, Tag};
+    {tag, list_to_binary([Tag])};
 find_matching(Requirement) ->
     {ok, Req0} = verl:parse_requirement(list_to_binary("~> " ++ Requirement)),
     Req1 = verl:compile_requirement(Req0),
+    rebar_log:log(debug, "Trying to find release from requirement ~s", [Requirement]),
+    % TODO: Handle fully defined version? Cache release info?
     Releases = [
         Release
      || Release <- exerl_pkg:get_releases(),

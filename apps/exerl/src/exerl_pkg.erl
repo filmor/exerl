@@ -17,21 +17,6 @@
     assets :: #{binary() => binary()}
 }).
 
-download_release(#release{assets = Assets}, Dest) ->
-    OtpVersion = erlang:system_info(otp_release),
-    DataName = list_to_binary(io_lib:format("elixir-otp-~s.zip", [OtpVersion])),
-    ChecksumName = <<DataName/binary, ".sha256sum">>,
-    DataUrl = maps:get(DataName, Assets),
-    ChecksumUrl = maps:get(ChecksumName, Assets),
-
-    filelib:ensure_dir(Dest),
-
-    exerl_util:download_to_file(DataUrl, Dest),
-
-    ok;
-download_release(Tag, Dest) when is_binary(Tag) ->
-    download_release(get_release(Tag), Dest).
-
 get_release(Tag) when is_binary(Tag) ->
     Path = list_to_binary(["/repos/elixir-lang/elixir/releases/tags/", Tag]),
     GHRelease = exerl_util:github_api(Path),
