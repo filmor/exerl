@@ -14,8 +14,14 @@ build(AppInfo) ->
     exerl_util:ensure_started(logger),
     exerl_util:ensure_started(mix),
     exerl_util:ensure_started(eex),
+    exerl_util:ensure_started(ex_unit),
 
-    CurrentPwd = file:get_cwd(),
+    rebar_api:debug("Mode: ~p", [code:get_mode()]),
+
+    [code:ensure_loaded(list_to_atom(filename:rootname(filename:basename(F))))
+ || P <- code:get_path(), F <- filelib:wildcard(P ++ "/*.beam")],
+
+    {ok, CurrentPwd} = file:get_cwd(),
     NewCwd = rebar_app_info:dir(AppInfo),
     rebar_api:debug("Switching cwd to ~p...", [NewCwd]),
     ok = file:set_cwd(NewCwd),
@@ -30,20 +36,24 @@ build(AppInfo) ->
         ?Task:run(<<"loadconfig">>),
 
         rebar_api:debug("Loading dependencies...", []),
-        ?Task:run(<<"loadpaths">>, [
-            <<"--no-deps-check">>,
-            <<"--no-archives-check">>
-        ]),
+        Deps = ?Dep:load_and_cache(),
+        rebar_api:debug("Deps: ~p", [Deps]),
 
-        rebar_api:debug("Config: ~p", ['Elixir.Mix.Project':config()]),
-        rebar_api:debug("AppPath: ~p", ['Elixir.Mix.Project':app_path('Elixir.Mix.Project':config())]),
+        ?Task:run(<<"loadpaths">>, [<<"--no-archives-check">>]),
 
+        rebar_api:debug("Config: ~p", [?Project:config()]),
+        rebar_api:debug("AppPath: ~p", [?Project:app_path(?Project:config())]),
+        rebar_api:debug("CodePath: ~p", [?Project:compile_path(?Project:config())]),
+
+        rebar_api:debug("ModInfo: ~p", ['Elixir.EEx':module_info()]),
+        rebar_api:debug("Path: ~p", [code:get_path()]),
         ?Task:run(<<"compile">>, []),
         rebar_api:debug("Compiled", []),
-        % code:purge(?Project),
+        code:purge(?Project),
         ok
     after
-        file:set_cwd(CurrentPwd)
+        file:set_cwd(CurrentPwd),
+        ok
     end.
 
 load_mix_exs() ->

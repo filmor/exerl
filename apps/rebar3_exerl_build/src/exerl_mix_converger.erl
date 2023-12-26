@@ -2,6 +2,15 @@
 
 -define(Dep, 'Elixir.Mix.Dep').
 -define(Conv, 'Elixir.Mix.RemoteConverger').
+-define(HexConv, 'Elixir.Hex.RemoteConverger').
+
+-define(LOG(Func, Args), begin
+    Res = erlang:apply(Func, Args),
+    rebar_api:debug("[~s] ~p => ~p", [
+        ??Func, Args, Res
+    ]),
+    Res
+end).
 
 -behaviour(?Conv).
 
@@ -15,20 +24,18 @@
 ]).
 
 register() ->
-    rebar_api:debug("Registering remote converger", []),
     ?Conv:register(?MODULE).
 
-'remote?'(_Dep) ->
-    rebar_api:debug("remote?: ~p", [_Dep]),
-    true.
+'remote?'(Dep) ->
+    ?LOG(fun ?HexConv:'remote?'/1, [Dep]).
 
-converge(_Deps, Map) ->
-    rebar_api:debug("converge: ~p ~p", [_Deps, Map]),
-    Map.
+converge(Deps, Map) ->
+    ?LOG(fun ?HexConv:converge/2, [Deps, Map]).
 
-deps(_Dep, Map) ->
-    rebar_api:debug("deps: ~p ~p", [_Dep, Map]),
-    [].
+deps(Dep, Map) ->
+    ?LOG(fun ?HexConv:deps/2, [Dep, Map]).
 
 post_converge() ->
+    % ?LOG(post_converge, ?HexConv:post_converge()).
+    % Skip original post_converge
     ok.

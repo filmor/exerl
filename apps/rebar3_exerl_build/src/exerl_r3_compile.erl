@@ -16,34 +16,35 @@
 
 context(AppInfo) ->
     try
-    EbinDir = rebar_app_info:ebin_dir(AppInfo),
-    Mappings = [{".beam", EbinDir}],
+        EbinDir = rebar_app_info:ebin_dir(AppInfo),
+        Mappings = [{".beam", EbinDir}],
 
-    OutDir = rebar_app_info:dir(AppInfo),
-    SrcDirs = rebar_dir:src_dirs(rebar_app_info:opts(AppInfo), ["src"]),
-    ExistingSrcDirs = lists:filter(
-        fun(D) ->
-            ec_file:is_dir(filename:join(OutDir, D))
-        end,
-        SrcDirs
-    ),
+        OutDir = rebar_app_info:dir(AppInfo),
+        SrcDirs = rebar_dir:src_dirs(rebar_app_info:opts(AppInfo), ["src"]),
+        ExistingSrcDirs = lists:filter(
+            fun(D) ->
+                ec_file:is_dir(filename:join(OutDir, D))
+            end,
+            SrcDirs
+        ),
 
-    _RebarOpts = rebar_app_info:opts(AppInfo),
+        _RebarOpts = rebar_app_info:opts(AppInfo),
 
-    % Ensure that the Elixir compiler does not load the previously built
-    % binaries and complains about it
-    code:del_path(EbinDir),
+        % Ensure that the Elixir compiler does not load the previously built
+        % binaries and complains about it
+        code:del_path(EbinDir),
 
-    #{
-        src_dirs => ExistingSrcDirs,
-        src_ext => ".ex",
-        include_dirs => [],
-        out_mappings => Mappings,
-        dependencies_opts => []
-    }
-    catch Error:Reason:St ->
-              ?D("~s", [erl_error:format_exception(Error, Reason, St)]),
-              error(bla)
+        #{
+            src_dirs => ExistingSrcDirs,
+            src_ext => ".ex",
+            include_dirs => [],
+            out_mappings => Mappings,
+            dependencies_opts => []
+        }
+    catch
+        Error:Reason:St ->
+            ?D("~s", [erl_error:format_exception(Error, Reason, St)]),
+            error(bla)
     end.
 
 needed_files(_Graph, FoundFiles, _, _AppInfo) ->
