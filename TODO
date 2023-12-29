@@ -10,3 +10,8 @@
 - Escript for the auto-download
 - Integration for ErlangLS/ElixirLS?
 - Use in ierl to remove mix.exs
+
+===
+
+- Inject Elixir dependencies into everything that uses mix, allow configuring
+  the Elixir version to use in rebar.config

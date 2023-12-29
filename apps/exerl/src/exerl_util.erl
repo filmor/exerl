@@ -2,6 +2,7 @@
 
 -export([
     ensure_started/1,
+    ensure_loaded/1,
     tls_opts/0,
     download_to_file/2,
     github_api/1
@@ -18,6 +19,43 @@ ensure_started(App) ->
         {error, already_started} -> ok;
         {error, Error} -> error(Error)
     end.
+
+-spec ensure_loaded([binary()]) -> ok.
+ensure_loaded(Deps) ->
+    rebar_api:info("[exerl] Deps: ~p", [Deps]),
+    CodePathAsMap = maps:from_list([
+        {
+            filename:basename(filename:dirname(P)),
+            P
+        }
+     || P <- code:get_path()
+    ]),
+
+    Paths = lists:foldl(
+        fun
+            (Dep, Acc) when is_map_key(Dep, CodePathAsMap) ->
+                [maps:get(Dep, CodePathAsMap) | Acc];
+            (_, Acc) ->
+                Acc
+        end,
+        [],
+        Deps
+    ),
+
+    ModulesToLoad = [
+        list_to_atom(Mod)
+     || {Mod, ModPath, IsLoaded} <- code:all_available(),
+        not IsLoaded,
+        lists:any(
+            fun(P) -> string:prefix(ModPath, P) =/= nomatch end,
+            Paths
+        )
+    ],
+
+    rebar_api:info("[exerl] Loading dependency modules: ~p", [ModulesToLoad]),
+    code:ensure_modules_loaded(ModulesToLoad),
+    ok.
+
 
 %% @doc Return options for `ssl' functions that use the system certificate store
 -spec tls_opts() -> [ssl:tls_option()].

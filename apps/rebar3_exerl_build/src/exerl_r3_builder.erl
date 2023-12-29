@@ -11,18 +11,14 @@
 -define(Conv, 'Elixir.Mix.Dep.Converger').
 
 build(AppInfo) ->
-    exerl_util:ensure_started(logger),
-    exerl_util:ensure_started(mix),
-    exerl_util:ensure_started(eex),
-    exerl_util:ensure_started(ex_unit),
-
-    rebar_api:debug("Mode: ~p", [code:get_mode()]),
-
-    [code:ensure_loaded(list_to_atom(filename:rootname(filename:basename(F))))
- || P <- code:get_path(), F <- filelib:wildcard(P ++ "/*.beam")],
+    % Elixir's "require" expects the respective modules to be loaded
+    % already. To ensure this, we just force-load all modules that we just
+    % compiled.
+    exerl_util:ensure_loaded(rebar_app_info:deps(AppInfo)),
 
     {ok, CurrentPwd} = file:get_cwd(),
     NewCwd = rebar_app_info:dir(AppInfo),
+
     rebar_api:debug("Switching cwd to ~p...", [NewCwd]),
     ok = file:set_cwd(NewCwd),
     try
@@ -36,22 +32,18 @@ build(AppInfo) ->
         ?Task:run(<<"loadconfig">>),
 
         rebar_api:debug("Loading dependencies...", []),
-        Deps = ?Dep:load_and_cache(),
-        rebar_api:debug("Deps: ~p", [Deps]),
-
         ?Task:run(<<"loadpaths">>, [<<"--no-archives-check">>]),
 
         rebar_api:debug("Config: ~p", [?Project:config()]),
         rebar_api:debug("AppPath: ~p", [?Project:app_path(?Project:config())]),
-        rebar_api:debug("CodePath: ~p", [?Project:compile_path(?Project:config())]),
+        rebar_api:info("CodePath: ~p", [?Project:compile_path(?Project:config())]),
 
-        rebar_api:debug("ModInfo: ~p", ['Elixir.EEx':module_info()]),
-        rebar_api:debug("Path: ~p", [code:get_path()]),
+        code:ensure_modules_loaded(['Elixir.Logger']),
         ?Task:run(<<"compile">>, []),
-        rebar_api:debug("Compiled", []),
-        code:purge(?Project),
-        ok
+
+        rebar_api:debug("Compiled", [])
     after
+        % code:purge(?Project),
         file:set_cwd(CurrentPwd),
         ok
     end.
