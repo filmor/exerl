@@ -1,4 +1,4 @@
--module(exerl_r3_compile).
+-module(exerl_elixir_compiler).
 
 -behaviour(rebar_compiler).
 
@@ -10,7 +10,7 @@
     clean/2
 ]).
 
--include_lib("providers/include/providers.hrl").
+% -include_lib("providers/include/providers.hrl").
 
 -define(D(Fmt, Args), rebar_log:log(diagnostic, Fmt, Args)).
 

@@ -1,4 +1,4 @@
--module(rebar3_exerl_dep).
+-module(exerl_dep).
 
 -export([
     init/1
@@ -57,7 +57,7 @@ do_download(TmpDir, AppInfo, State, _MyState) ->
     {?RES, Name, {tag, Tag}} = lock(AppInfo, State),
     rebar_log:log(debug, "Ensuring that tag ~s is cached", [Tag]),
 
-    Path = exerl_r3:ensure_pkg(State, Tag),
+    Path = ensure_pkg(State, Tag),
     rebar_log:log(debug, "Downloaded precompiled Elixir to ~s", [Path]),
     extract_lib_from_pkg(Path, Name, TmpDir),
 
@@ -113,3 +113,58 @@ find_matching(Requirement) ->
     ),
 
     {tag, exerl_pkg:tag(BestMatch)}.
+
+-spec ensure_pkg(rebar_state:t(), binary()) -> file:filename_all().
+ensure_pkg(State, Version) ->
+    CacheDir = cache_dir(State),
+
+    Dest = list_to_binary(["elixir-", Version, ".ez"]),
+    DestPath = filename:join(CacheDir, Dest),
+
+    case filelib:is_regular(DestPath) of
+        true ->
+            rebar_log:log(debug, "File ~s exists", [DestPath]),
+            ok;
+        false ->
+            rebar_log:log(debug, "File ~s does not exist, downloading", [DestPath]),
+            OtpVersion = erlang:system_info(otp_release),
+            DataName = list_to_binary(["elixir-otp-", OtpVersion, ".zip"]),
+            ChecksumName = <<DataName/binary, ".sha256sum">>,
+
+            Rel = exerl_pkg:get_release(Version),
+            Assets = exerl_pkg:assets(Rel),
+            DataUrl = maps:get(DataName, Assets),
+            ChecksumUrl = maps:get(ChecksumName, Assets),
+
+            filelib:ensure_dir(DestPath),
+            exerl_web:download_to_file(DataUrl, DestPath),
+            exerl_web:download_to_file(ChecksumUrl, [DestPath, ".sha256sum"]),
+
+            % Verify checksum:
+            {ok, Data} = file:read_file(DestPath),
+            Hash0 = crypto:hash(sha256, Data),
+
+            {ok, SumData} = file:read_file(list_to_binary([DestPath, ".sha256sum"])),
+            % First 64 bytes decoded
+            Hash1 = binary:decode_hex(binary:part(SumData, {0, 64})),
+
+            case Hash1 of
+                Hash0 ->
+                    % Checksum verified, all good
+                    ok;
+                _ ->
+                    file:delete(DestPath),
+                    file:delete(list_to_binary([DestPath, ".sha256sum"])),
+                    error(checksum_failed)
+            end
+    end,
+    DestPath.
+
+-spec cache_dir(rebar_state:t()) -> file:filename_all().
+cache_dir(State) ->
+    Dir = rebar_dir:global_cache_dir(rebar_state:opts(State)),
+    filename:join([
+        Dir,
+        "exerl",
+        list_to_binary(["otp", erlang:system_info(otp_release)])
+    ]).

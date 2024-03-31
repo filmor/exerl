@@ -6,7 +6,7 @@
 
 -define(LOG(Func, Args), begin
     Res = erlang:apply(Func, Args),
-    rebar_api:debug("[~s] ~p => ~p", [
+    rebar_api:debug("[~s]~n~p~n=>~n~p", [
         ??Func, Args, Res
     ]),
     Res

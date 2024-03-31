@@ -1,16 +1,14 @@
-{application, rebar3_exerl_build, [
-    {description, "An OTP library"},
+{application, exerl_dep, [
+    {description, "Elixir Resource for Rebar3"},
     {vsn, git},
     {registered, []},
     {applications, [
         kernel,
         stdlib,
-        exerl,
-        meck,
-        rebar3_exerl_dep
+        providers
     ]},
     {env, []},
-    {modules, []},
+    {modules, [exerl_dep]},
 
     {licenses, ["Apache 2.0"]},
     {links, []}

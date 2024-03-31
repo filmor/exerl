@@ -1,4 +1,4 @@
--module(rebar3_exerl_build).
+-module(exerl_build).
 
 -export([
     init/1
@@ -18,8 +18,8 @@ init(State) ->
     exerl_util:ensure_started(eex),
     exerl_util:ensure_started(ex_unit),
     
-    State1 = rebar_state:prepend_compilers(State, [exerl_r3_compile]),
-    State2 = rebar_state:add_project_builder(State1, mix, exerl_r3_builder),
+    State1 = rebar_state:prepend_compilers(State, [exerl_elixir_compiler]),
+    State2 = rebar_state:add_project_builder(State1, mix, exerl_mix_builder),
     exerl_mix_converger:register(),
     'Elixir.Mix.SCM':prepend(exerl_mix_scm),
 
