@@ -1,28 +1,16 @@
 {"1.2.0",
-[{<<"cf">>,{pkg,<<"cf">>,<<"0.3.1">>},2},
- {<<"eex">>,{elixir,<<"eex">>,{tag,<<"v1.15.2">>}},0},
- {<<"elixir">>,{elixir,<<"elixir">>,{tag,<<"v1.15.2">>}},0},
- {<<"erlware_commons">>,{pkg,<<"erlware_commons">>,<<"1.4.0">>},1},
- {<<"ex_unit">>,{elixir,<<"ex_unit">>,{tag,<<"v1.15.2">>}},0},
- {<<"getopt">>,{pkg,<<"getopt">>,<<"1.0.1">>},1},
- {<<"logger">>,{elixir,<<"logger">>,{tag,<<"v1.15.2">>}},0},
- {<<"mix">>,{elixir,<<"mix">>,{tag,<<"v1.15.2">>}},0},
- {<<"providers">>,{pkg,<<"providers">>,<<"1.9.0">>},0},
+[{<<"eex">>,{elixir,<<"eex">>,{tag,<<"v1.16.2">>}},0},
+ {<<"elixir">>,{elixir,<<"elixir">>,{tag,<<"v1.16.2">>}},0},
+ {<<"ex_unit">>,{elixir,<<"ex_unit">>,{tag,<<"v1.16.2">>}},0},
+ {<<"logger">>,{elixir,<<"logger">>,{tag,<<"v1.16.2">>}},0},
+ {<<"mix">>,{elixir,<<"mix">>,{tag,<<"v1.16.2">>}},0},
  {<<"thoas">>,{pkg,<<"thoas">>,<<"1.2.0">>},0},
  {<<"verl">>,{pkg,<<"verl">>,<<"1.1.1">>},0}]}.
 [
 {pkg_hash,[
- {<<"cf">>, <<"5CB902239476E141EA70A740340233782D363A31EEA8AD37049561542E6CD641">>},
- {<<"erlware_commons">>, <<"F9EE38412E1413944BE78736DDB9BDB4C0664ABA5133563F4F3B359A8ED0AD52">>},
- {<<"getopt">>, <<"C73A9FA687B217F2FF79F68A3B637711BB1936E712B521D8CE466B29CBF7808A">>},
- {<<"providers">>, <<"46F6645B0C677B1029E02B013BFD69092A2232854DAF359F2378FA42AC0BEC0D">>},
  {<<"thoas">>, <<"73B0546BAFF5008E6ED209558FD7B0606B035D96F9F3DE24EF42879100E094D4">>},
  {<<"verl">>, <<"98F3EC48B943AA4AE8E29742DE86A7CD752513687911FE07D2E00ECDF3107E45">>}]},
 {pkg_hash_ext,[
- {<<"cf">>, <<"315E8D447D3A4B02BCDBFA397AD03BBB988A6E0AA6F44D3ADD0F4E3C3BF97672">>},
- {<<"erlware_commons">>, <<"185ECF5CF43BAB3A013DDB3614CE7BBA7F6C7A827904E64E57DA54FCDFDCE2E6">>},
- {<<"getopt">>, <<"53E1AB83B9CEB65C9672D3E7A35B8092E9BDC9B3EE80721471A161C10C59959C">>},
- {<<"providers">>, <<"D287E874406A1505608642B0A3DB5B68D6ADA3F2AB001AEC87E7F4D7C79FC017">>},
  {<<"thoas">>, <<"540C8CB7D9257F2AD0A14145DC23560F91ACDCA995F0CCBA779EB33AF5D859D1">>},
  {<<"verl">>, <<"0925E51CD92A0A8BE271765B02430B2E2CFF8AC30EF24D123BD0D58511E8FB18">>}]}
 ].

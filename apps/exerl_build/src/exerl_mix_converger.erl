@@ -1,6 +1,6 @@
 -module(exerl_mix_converger).
 
--define(Dep, 'Elixir.Mix.Dep').
+% -define(Dep, 'Elixir.Mix.Dep').
 -define(Conv, 'Elixir.Mix.RemoteConverger').
 -define(HexConv, 'Elixir.Hex.RemoteConverger').
 
@@ -12,7 +12,7 @@
     Res
 end).
 
--behaviour(?Conv).
+% -behaviour(?Conv).
 
 -export([
     register/0,

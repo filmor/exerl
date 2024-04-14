@@ -3,7 +3,7 @@
 -define(Scm, 'Elixir.Mix.SCM').
 -define(HexScm, 'Elixir.Hex.SCM').
 
--behaviour(?Scm).
+% -behaviour(?Scm).
 
 -export([
     'fetchable?'/0,

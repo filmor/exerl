@@ -44,7 +44,7 @@ context(AppInfo) ->
     catch
         Error:Reason:St ->
             ?D("~s", [erl_error:format_exception(Error, Reason, St)]),
-            error(bla)
+            error(Reason)
     end.
 
 needed_files(_Graph, FoundFiles, _, _AppInfo) ->
@@ -54,6 +54,7 @@ dependencies(_Source, _SourceDir, _Dirs) ->
     [].
 
 compile(Source, [{_, OutDir}], _Config, _Opts) ->
+    exerl_util:ensure_elixir(),
     exerl_util:ensure_started(mix),
     {ok, Modules, _Warnings} = 'Elixir.Kernel.ParallelCompiler':compile_to_path(
         [list_to_binary(Source)],
