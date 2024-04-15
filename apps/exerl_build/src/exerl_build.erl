@@ -10,6 +10,14 @@ init(State) ->
     BaseDir = rebar_dir:base_dir(State),
     DepsDir = filename:join(BaseDir, "lib"),
 
+    try
+        ScriptName = escript:script_name(),
+        os:putenv("MIX_REBAR3", filename:absname(ScriptName))
+    catch
+        error:_ ->
+            ok
+    end,
+
     os:putenv("MIX_DEPS_PATH", ensure_string(filename:absname(DepsDir))),
     os:putenv("MIX_BUILD_PATH", ensure_string(filename:absname(BaseDir))),
 

@@ -33,7 +33,7 @@ accepts_options(Name, Opts) ->
 'checked_out?'(Opts) ->
     ?HexScm:'checked_out?'(Opts).
 
-lock_status(Opts) ->
+lock_status(_Opts) ->
     % ?HexScm:lock_status(Opts).
     ok.
 
