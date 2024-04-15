@@ -1,9 +1,4 @@
 exerl
 =====
 
-An OTP library
-
-Build
------
-
-    $ rebar3 compile
+Erlang/Elixir interoperability plugins for `rebar3`.
