@@ -12,6 +12,10 @@ build(AppInfo) ->
     % already. To ensure this, we just force-load all modules that we just
     % compiled.
     exerl_util:ensure_elixir(),
+
+    CodePath = code:get_path(),
+    LoadedModules = [M || {M, _} <- code:all_loaded()],
+
     exerl_util:ensure_loaded(rebar_app_info:deps(AppInfo)),
 
     {ok, CurrentPwd} = file:get_cwd(),
@@ -26,8 +30,6 @@ build(AppInfo) ->
         rebar_api:debug("Loading mix.exs...", []),
 
         load_mix_exs(),
-        rebar_api:debug("Loading config...", []),
-        ?Task:run(<<"loadconfig">>),
 
         rebar_api:debug("Loading dependencies...", []),
         ?Task:run(<<"loadpaths">>, [<<"--no-archives-check">>, <<"--no-compile">>]),
@@ -37,12 +39,30 @@ build(AppInfo) ->
         rebar_api:debug("[exerl_build] CodePath: ~p", [?Project:compile_path(?Project:config())]),
 
         code:ensure_modules_loaded(['Elixir.Logger']),
-        ?Task:run(<<"compile">>, []),
+        ?Task:run(<<"compile">>, [
+            <<"--from-mix-deps-compile">>,
+            <<"--no-archives-check">>,
+            <<"--no-warnings-as-errors">>,
+            <<"--no-code-path-pruning">>,
+            <<"--no-protocol-consolidation">>
+        ]),
 
         rebar_api:debug("Compiled", []),
         ok
     after
-        % code:purge(?Project),
+        NewLoadedModules = [M || {M, _} <- code:all_loaded()],
+        Added = NewLoadedModules -- LoadedModules,
+        Removed = LoadedModules -- NewLoadedModules,
+
+        rebar_api:debug("Unloading modules ~p", [Added]),
+        lists:foreach(fun code:purge/1, Added),
+
+        rebar_api:debug("Reloading modules ~p", [Removed]),
+        lists:foreach(fun code:load_module/1, Removed),
+
+        rebar_api:debug("Resetting code path...", []),
+        code:set_path(CodePath),
+        
         file:set_cwd(CurrentPwd),
         ok
     end.
