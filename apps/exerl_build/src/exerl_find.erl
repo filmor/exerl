@@ -5,7 +5,6 @@
     set_code_path/0
 ]).
 
-
 set_code_path() ->
     case code:which(elixir) of
         non_existing ->
@@ -42,4 +41,3 @@ from_executable() ->
     ],
 
     list_to_binary(exerl_exec:run(Args)).
-

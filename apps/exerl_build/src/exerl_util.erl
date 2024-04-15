@@ -19,6 +19,7 @@ ensure_started(App) ->
 -spec ensure_elixir() -> ok.
 ensure_elixir() ->
     % TODO: Check if path changed, if it did, unload everything
+    exerl_find:set_code_path(),
     try
         exerl_util:ensure_started(logger),
         exerl_util:ensure_started(mix),
