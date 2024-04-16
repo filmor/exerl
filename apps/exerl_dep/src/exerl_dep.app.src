@@ -4,11 +4,10 @@
     {registered, []},
     {applications, [
         kernel,
-        stdlib,
-        providers
+        stdlib
     ]},
     {env, []},
-    {modules, [exerl_dep]},
+    {modules, []},
 
     {licenses, ["Apache 2.0"]},
     {links, []}

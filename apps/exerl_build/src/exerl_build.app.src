@@ -4,8 +4,7 @@
     {registered, []},
     {applications, [
         kernel,
-        stdlib,
-        meck
+        stdlib
     ]},
     {env, []},
     {modules, []},
