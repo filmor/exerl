@@ -50,13 +50,13 @@ ensure_elixir() ->
     exerl_mix_converger:register(),
     'Elixir.Mix.SCM':prepend(exerl_mix_scm),
 
-    % Ensure Elixir modules that are used for their macros are loaded:
-    exerl_util:ensure_loaded(["logger", "mix", "elixir", "eex", "ex_unit"]).
+    ok.
 
 
 -spec ensure_loaded([binary()]) -> ok.
 ensure_loaded(Deps) ->
     rebar_api:debug("[exerl] Deps: ~p", [Deps]),
+
     % TODO: Ensure that all are part of the code path!
     CodePathAsMap = maps:from_list([
         {
