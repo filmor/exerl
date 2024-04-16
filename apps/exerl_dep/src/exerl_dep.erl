@@ -13,7 +13,7 @@
 ]).
 
 -behaviour(rebar_resource_v2).
--define(RES, elixir).
+-define(RES, ex).
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
@@ -101,18 +101,18 @@ find_matching(Requirement) ->
     % TODO: Handle fully defined version? Cache release info?
     Releases = [
         Release
-     || Release <- exerl_pkg:get_releases(),
-        verl:is_match(exerl_pkg:version(Release), Req1)
+     || Release <- exerl_dep_pkg:get_releases(),
+        verl:is_match(exerl_dep_pkg:version(Release), Req1)
     ],
 
     [BestMatch | _] = lists:sort(
         fun(Lhs, Rhs) ->
-            verl:gt(exerl_pkg:version(Lhs), exerl_pkg:version(Rhs))
+            verl:gt(exerl_dep_pkg:version(Lhs), exerl_dep_pkg:version(Rhs))
         end,
         Releases
     ),
 
-    {tag, exerl_pkg:tag(BestMatch)}.
+    {tag, exerl_dep_pkg:tag(BestMatch)}.
 
 -spec ensure_pkg(rebar_state:t(), binary()) -> file:filename_all().
 ensure_pkg(State, Version) ->
@@ -131,14 +131,14 @@ ensure_pkg(State, Version) ->
             DataName = list_to_binary(["elixir-otp-", OtpVersion, ".zip"]),
             ChecksumName = <<DataName/binary, ".sha256sum">>,
 
-            Rel = exerl_pkg:get_release(Version),
-            Assets = exerl_pkg:assets(Rel),
+            Rel = exerl_dep_pkg:get_release(Version),
+            Assets = exerl_dep_pkg:assets(Rel),
             DataUrl = maps:get(DataName, Assets),
             ChecksumUrl = maps:get(ChecksumName, Assets),
 
             filelib:ensure_dir(DestPath),
-            exerl_web:download_to_file(DataUrl, DestPath),
-            exerl_web:download_to_file(ChecksumUrl, [DestPath, ".sha256sum"]),
+            exerl_dep_web:download_to_file(DataUrl, DestPath),
+            exerl_dep_web:download_to_file(ChecksumUrl, [DestPath, ".sha256sum"]),
 
             % Verify checksum:
             {ok, Data} = file:read_file(DestPath),

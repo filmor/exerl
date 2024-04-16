@@ -1,10 +1,5 @@
 {"1.2.0",
-[{<<"eex">>,{elixir,<<"eex">>,{tag,<<"v1.16.2">>}},0},
- {<<"elixir">>,{elixir,<<"elixir">>,{tag,<<"v1.16.2">>}},0},
- {<<"ex_unit">>,{elixir,<<"ex_unit">>,{tag,<<"v1.16.2">>}},0},
- {<<"logger">>,{elixir,<<"logger">>,{tag,<<"v1.16.2">>}},0},
- {<<"mix">>,{elixir,<<"mix">>,{tag,<<"v1.16.2">>}},0},
- {<<"thoas">>,{pkg,<<"thoas">>,<<"1.2.0">>},0},
+[{<<"thoas">>,{pkg,<<"thoas">>,<<"1.2.0">>},0},
  {<<"verl">>,{pkg,<<"verl">>,<<"1.1.1">>},0}]}.
 [
 {pkg_hash,[

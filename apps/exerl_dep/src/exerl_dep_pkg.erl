@@ -1,4 +1,4 @@
--module(exerl_pkg).
+-module(exerl_dep_pkg).
 
 -export([
     get_release/1,
@@ -19,7 +19,7 @@
 
 get_release(Tag) when is_binary(Tag) ->
     Path = list_to_binary(["/repos/elixir-lang/elixir/releases/tags/", Tag]),
-    GHRelease = exerl_web:github_api(Path),
+    GHRelease = exerl_dep_web:github_api(Path),
     to_rec(GHRelease).
 
 to_rec(#{<<"tag_name">> := Tag, <<"assets">> := Assets}) ->
@@ -52,5 +52,5 @@ find_newest_version(VersionPrefix) ->
     ).
 
 get_releases() ->
-    Decoded = exerl_web:github_api("/repos/elixir-lang/elixir/releases"),
+    Decoded = exerl_dep_web:github_api("/repos/elixir-lang/elixir/releases"),
     [to_rec(T) || T = #{<<"prerelease">> := Pre} <- Decoded, not Pre].

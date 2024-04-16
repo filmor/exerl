@@ -1,4 +1,4 @@
--module(exerl_web).
+-module(exerl_dep_web).
 
 -export([
     % tls_opts/0,
