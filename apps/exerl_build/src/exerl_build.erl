@@ -26,8 +26,9 @@ init(State) ->
 
     State1 = rebar_state:prepend_compilers(State, [exerl_elixir_compiler]),
     State2 = rebar_state:add_project_builder(State1, mix, exerl_mix_builder),
+    {ok, State3} = exerl_prv_consolidate:init(State2),
 
-    {ok, State2}.
+    {ok, State3}.
 
 ensure_string(V) when is_binary(V) ->
     binary_to_list(V);
