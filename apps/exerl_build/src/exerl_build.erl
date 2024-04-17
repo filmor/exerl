@@ -10,6 +10,24 @@ init(State) ->
     BaseDir = rebar_dir:base_dir(State),
     DepsDir = filename:join(BaseDir, "lib"),
 
+    case application:get_key(rebar, vsn) of
+        {ok, Vsn} ->
+            {ok, Req} = verl:parse_requirement(<<">= 3.23.0">>),
+            case verl:is_match(list_to_binary(Vsn), Req) of
+                false ->
+                    rebar_api:warn(
+                        "Rebar3 version ~s does not support dependencies like "
+                        "\"1.0 or 2.0\", please upgrade to at least 3.23.0 if "
+                        "you are seeing errors that mention a version like this",
+                        [Vsn]
+                    );
+                _ ->
+                    ok
+            end;
+        _ ->
+            ok
+    end,
+
     try
         ScriptName = escript:script_name(),
         os:putenv("MIX_REBAR3", filename:absname(ScriptName))
