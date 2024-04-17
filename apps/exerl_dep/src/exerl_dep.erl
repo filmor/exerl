@@ -14,6 +14,7 @@
 
 -behaviour(rebar_resource_v2).
 -define(RES, ex).
+-define(FULL, elixir_full).
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
@@ -29,15 +30,19 @@ lock(AppInfo, _) ->
     case rebar_app_info:source(AppInfo) of
         {?RES, Version} ->
             Name = rebar_app_info:name(AppInfo),
-            Version1 = find_matching(Version),
-            {?RES, Name, Version1};
-        {?RES, Name, Version} ->
-            Version1 = find_matching(Version),
-            {?RES, Name, Version1}
+            {tag, Version1} = find_matching(Version),
+            {?RES, Name, tag, Version1};
+        % {?RES, Name, Version} ->
+        %     {tag, Version1} = find_matching(Version),
+        %     {?RES, Name, tag, Version1};
+        {?RES, _, tag, _} = Lock ->
+            Lock
     end.
 
-needs_update(_AppInfo, _) ->
-    % TODO: Take floating version into account
+needs_update(AppInfo, _) ->
+    {?RES, _Name, tag, Vsn} = rebar_app_info:source(AppInfo),
+    rebar_api:debug("OldVsn: ~p, Vsn: ~p", [rebar_app_info:original_vsn(AppInfo), Vsn]),
+    % TODO
     false.
 
 download(TmpDir, AppInfo, State, _MyState) ->
@@ -54,12 +59,44 @@ do_download(TmpDir, AppInfo, State, _MyState) ->
     % AppOpts = rebar_app_info:opts(AppInfo),
     % AppOpts1 = rebar_dir:src_dirs(AppOpts, []),
 
-    {?RES, Name, {tag, Tag}} = lock(AppInfo, State),
+    {?RES, Name, tag, Tag} = lock(AppInfo, State),
     rebar_log:log(debug, "Ensuring that tag ~s is cached", [Tag]),
 
     Path = ensure_pkg(State, Tag),
     rebar_log:log(debug, "Downloaded precompiled Elixir to ~s", [Path]),
-    extract_lib_from_pkg(Path, Name, TmpDir),
+
+    NameAtom = binary_to_atom(Name),
+    RebarConfig = filename:join(TmpDir, "rebar.config"),
+
+    case NameAtom of
+        ?FULL ->
+            % Write fake app file for the meta package
+            AppFile = filename:join([
+                TmpDir,
+                "ebin",
+                atom_to_list(?FULL) ++ ".app"
+            ]),
+            filelib:ensure_dir(AppFile),
+
+            AppData =
+                {application, ?FULL, [
+                    {description, "Meta-package for Elixir"},
+                    {vsn, binary_to_list(Tag)},
+                    {modules, []},
+                    {registered, []},
+                    {applications, [kernel, stdlib]}
+                ]},
+
+            ok = file:write_file(
+                AppFile,
+                io_lib:format("~p.~n", [AppData])
+            );
+        _ ->
+            extract_lib_from_pkg(Path, Name, TmpDir)
+    end,
+
+    Deps = [{N, {?RES, atom_to_binary(N), tag, Tag}} || N <- deps(NameAtom)],
+    file:write_file(RebarConfig, io_lib:format("~p.", [{deps, Deps}])),
 
     ok.
 
@@ -168,3 +205,11 @@ cache_dir(State) ->
         "exerl",
         list_to_binary(["otp", erlang:system_info(otp_release)])
     ]).
+
+deps(elixir) -> [];
+deps(eex) -> [elixir];
+deps(logger) -> [elixir];
+deps(mix) -> [elixir, eex, logger];
+deps(ex_unit) -> [mix];
+deps(iex) -> [iex];
+deps(elixir_full) -> [elixir, eex, iex, logger, mix, ex_unit].
