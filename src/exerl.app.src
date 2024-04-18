@@ -1,10 +1,12 @@
-{application, exerl_build, [
-    {description, "Mix Builder and Elixir Compiler for Rebar3"},
+{application, exerl, [
+    {description, "Elixir support for Rebar3"},
     {vsn, git},
     {registered, []},
     {applications, [
         kernel,
-        stdlib
+        stdlib,
+        thoas,
+        verl
     ]},
     {env, []},
     {modules, []},

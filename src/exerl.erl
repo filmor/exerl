@@ -1,4 +1,4 @@
--module(exerl_build).
+-module(exerl).
 
 -export([
     init/1
@@ -45,8 +45,9 @@ init(State) ->
     State1 = rebar_state:prepend_compilers(State, [exerl_elixir_compiler]),
     State2 = rebar_state:add_project_builder(State1, mix, exerl_mix_builder),
     {ok, State3} = exerl_prv_consolidate:init(State2),
+    {ok, State4} = exerl_dep:init(State3),
 
-    {ok, State3}.
+    {ok, State4}.
 
 ensure_string(V) when is_binary(V) ->
     binary_to_list(V);
