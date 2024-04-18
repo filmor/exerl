@@ -1,10 +1,8 @@
 -module(exerl_mix_builder).
 
--export([build/1]).
+-include("exerl.hrl").
 
--define(Project, 'Elixir.Mix.Project').
--define(Task, 'Elixir.Mix.Task').
--define(Code, 'Elixir.Code').
+-export([build/1]).
 
 -spec build(rebar_app_info:t()) -> ok.
 build(AppInfo) ->

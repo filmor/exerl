@@ -1,8 +1,6 @@
 -module(exerl_mix_converger).
 
-% -define(Dep, 'Elixir.Mix.Dep').
--define(Conv, 'Elixir.Mix.RemoteConverger').
--define(HexConv, 'Elixir.Hex.RemoteConverger').
+-include("exerl.hrl").
 
 -define(LOG(Func, Args), begin
     Res = erlang:apply(Func, Args),
@@ -16,6 +14,7 @@ end).
 
 -export([
     register/0,
+    unregister/0,
 
     'remote?'/1,
     converge/2,
@@ -25,6 +24,9 @@ end).
 
 register() ->
     ?Conv:register(?MODULE).
+
+unregister() ->
+    ?Conv:register(nil).
 
 'remote?'(Dep) ->
     ?LOG(fun ?HexConv:'remote?'/1, [Dep]).

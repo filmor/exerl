@@ -1,13 +1,12 @@
 -module(exerl_util).
 
+-include("exerl.hrl").
+
 -export([
     ensure_elixir/0,
     ensure_started/1,
     ensure_loaded/1
 ]).
-
--define(Mix, 'Elixir.Mix').
--define(MixSCM, 'Elixir.Mix.SCM').
 
 %% @doc Start an application and its dependencies and explicitly `error' in case
 %% it can not be started.
@@ -51,7 +50,7 @@ ensure_elixir() ->
     ?Mix:debug(Debug),
 
     exerl_mix_converger:register(),
-    ?MixSCM:prepend(exerl_mix_scm),
+    ?Scm:prepend(exerl_mix_scm),
 
     ok.
 

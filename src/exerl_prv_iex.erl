@@ -1,4 +1,4 @@
--module(exerl_prv_consolidate).
+-module(exerl_prv_iex).
 
 -include("exerl.hrl").
 
@@ -10,7 +10,7 @@
 
 -behaviour(provider).
 
--define(PROVIDER, consolidate_protocols).
+-define(PROVIDER, iex).
 -define(DEPS, [{default, compile}]).
 
 %%%===================================================================
@@ -29,51 +29,38 @@ init(State) ->
         %% The list of dependencies
         {deps, ?DEPS},
         %% How to use the plugin
-        {example, "rebar3 consolidate_protocols"},
+        {example, "rebar3 iex"},
         %% list of options understood by the plugin
         {opts, []},
-        {short_desc, "Consolidate protocols"},
+        {short_desc, "Start an Elixir shell"},
         {desc, ""}
     ]),
     {ok, rebar_state:add_provider(State, Provider)}.
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
 do(State) ->
-    exerl_util:ensure_elixir(),
-
     Cwd = rebar_state:dir(State),
     Providers = rebar_state:providers(State),
     rebar_hooks:run_all_hooks(Cwd, pre, ?PROVIDER, Providers, State),
-    Deps = rebar_state:all_deps(State),
-    ProjectApps = rebar_state:project_apps(State),
 
-    OutDir = rebar_app_info:ebin_dir(hd(ProjectApps)),
-    filelib:ensure_path(OutDir),
+    exerl_mix_converger:unregister(),
 
-    % Through adding the code path (which has previously been updated with
-    % Elixir's paths), this will also consolidate the builtin protocols.
-    Paths = [rebar_app_info:ebin_dir(A) || A <- ProjectApps ++ Deps] ++ code:get_path(),
-    Protos = ?Protocol:extract_protocols(Paths),
+    exerl_find:set_code_path(),
+    {ok, _} = application:ensure_all_started(elixir),
+    {ok, _} = application:ensure_all_started(iex),
 
-    rebar_api:info("Consolidating ~p protocols ...", [length(Protos)]),
+    ok = shell:start_interactive({'Elixir.IEx', start, [[{on_eof, halt}]]}),
 
-    lists:foreach(
-        fun(Proto) ->
-            Impls = ?Protocol:extract_impls(Proto, Paths),
-            rebar_api:debug("Implementations of ~p:~n~p", [Proto, Impls]),
+    receive after 10000 -> ok end,
 
-            {ok, Consolidated} = ?Protocol:consolidate(Proto, Impls),
+    case shell:whereis() of
+        undefined ->
+            error(failed_to_start_iex);
+        Pid ->
+            Ref = monitor(process, Pid),
 
-            Name = filename:join(OutDir, atom_to_list(Proto) ++ ".beam"),
-            file:write_file(Name, Consolidated),
-            ok
-        end,
-        Protos
-    ),
-
-    rebar_hooks:run_all_hooks(
-        Cwd, post, ?PROVIDER, Providers, State
-    ),
+            receive {'DOWN', Ref, process, _, _} -> ok end
+    end,
 
     {ok, State}.
 

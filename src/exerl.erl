@@ -46,8 +46,9 @@ init(State) ->
     State2 = rebar_state:add_project_builder(State1, mix, exerl_mix_builder),
     {ok, State3} = exerl_prv_consolidate:init(State2),
     {ok, State4} = exerl_dep:init(State3),
+    {ok, State5} = exerl_prv_iex:init(State4),
 
-    {ok, State4}.
+    {ok, State5}.
 
 ensure_string(V) when is_binary(V) ->
     binary_to_list(V);

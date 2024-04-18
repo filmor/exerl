@@ -1,7 +1,6 @@
 -module(exerl_mix_scm).
 
--define(Scm, 'Elixir.Mix.SCM').
--define(HexScm, 'Elixir.Hex.SCM').
+-include("exerl.hrl").
 
 % -behaviour(?Scm).
 
