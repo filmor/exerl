@@ -43,6 +43,14 @@ github_api(Path) ->
                 Else
         end,
 
+    Auth =
+        case os:getenv("GITHUB_TOKEN") of
+            false ->
+                [];
+            Token ->
+                [{"Auth", "Bearer: " ++ Token}]
+        end,
+
     {ok, Result} = httpc:request(
         get,
         {
@@ -51,7 +59,7 @@ github_api(Path) ->
                 {"Accept", "application/vnd.github+json"},
                 {"X-GitHub-Api-Version", "2022-11-28"},
                 {"User-Agent", ?USER_AGENT}
-            ]
+            ] ++ Auth
         },
         [{ssl, tls_opts()}],
         [{body_format, binary}]
