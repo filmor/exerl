@@ -49,7 +49,7 @@ do(State) ->
     {ok, _} = application:ensure_all_started(elixir),
     {ok, _} = application:ensure_all_started(iex),
 
-    ok = shell:start_interactive({'Elixir.IEx', start, [[{on_eof, halt}]]}),
+    ok = shell:start_interactive({?IEx, start, [[{on_eof, halt}]]}),
 
     receive after 10000 -> ok end,
 

@@ -36,7 +36,7 @@ build(AppInfo) ->
         rebar_api:debug("[exerl_build] AppPath: ~p", [?Project:app_path(?Project:config())]),
         rebar_api:debug("[exerl_build] CodePath: ~p", [?Project:compile_path(?Project:config())]),
 
-        code:ensure_modules_loaded(['Elixir.Logger']),
+        code:ensure_modules_loaded([?Logger]),
         ?Task:run(<<"compile">>, [
             <<"--from-mix-deps-compile">>,
             <<"--no-archives-check">>,
