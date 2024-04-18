@@ -12,7 +12,7 @@
 
 % -include_lib("providers/include/providers.hrl").
 
--define(D(Fmt, Args), rebar_log:log(diagnostic, Fmt, Args)).
+-define(Compiler, 'Elixir.Kernel.ParallelCompiler').
 
 context(AppInfo) ->
     try
@@ -22,9 +22,7 @@ context(AppInfo) ->
         OutDir = rebar_app_info:dir(AppInfo),
         SrcDirs = rebar_dir:src_dirs(rebar_app_info:opts(AppInfo), ["src"]),
         ExistingSrcDirs = lists:filter(
-            fun(D) ->
-                ec_file:is_dir(filename:join(OutDir, D))
-            end,
+            fun(D) -> ec_file:is_dir(filename:join(OutDir, D)) end,
             SrcDirs
         ),
 
@@ -43,7 +41,7 @@ context(AppInfo) ->
         }
     catch
         Error:Reason:St ->
-            ?D("~s", [erl_error:format_exception(Error, Reason, St)]),
+            rebar_api:debug("~s", [erl_error:format_exception(Error, Reason, St)]),
             error(Reason)
     end.
 
@@ -56,11 +54,11 @@ dependencies(_Source, _SourceDir, _Dirs) ->
 compile(Source, [{_, OutDir}], _Config, _Opts) ->
     exerl_util:ensure_elixir(),
     exerl_util:ensure_started(mix),
-    {ok, Modules, _Warnings} = 'Elixir.Kernel.ParallelCompiler':compile_to_path(
+    {ok, Modules, _Warnings} = ?Compiler:compile_to_path(
         [list_to_binary(Source)],
         list_to_binary(OutDir)
     ),
-    ?D("Compiled ~p from ~s", [Modules, Source]),
+    rebar_api:debug("Compiled ~p from ~s", [Modules, Source]),
 
     ok.
 
@@ -72,16 +70,17 @@ clean(Files, AppInfo) ->
     ToDelete =
         lists:filtermap(
             fun(Beam) ->
-                rebar_log:log(diagnostic, "Beam: ~s", [Beam]),
                 case beam_lib:chunks(Beam, [compile_info]) of
                     {ok, {Mod, [{compile_info, CompileInfo}]}} ->
                         case proplists:get_value(source, CompileInfo) of
                             Source when is_map_key(Source, FilesSet) ->
-                                ?D("Beam file ~s (~p) was compiled from ~s, deleting", [
-                                    Beam,
-                                    Mod,
-                                    Source
-                                ]),
+                                rebar_api:debug(
+                                    "Beam file ~s (~p) was compiled from ~s, deleting", [
+                                        Beam,
+                                        Mod,
+                                        Source
+                                    ]
+                                ),
                                 {true, Beam};
                             _Else ->
                                 false

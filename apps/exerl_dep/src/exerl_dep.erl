@@ -56,14 +56,11 @@ download(TmpDir, AppInfo, State, _MyState) ->
     end.
 
 do_download(TmpDir, AppInfo, State, _MyState) ->
-    % AppOpts = rebar_app_info:opts(AppInfo),
-    % AppOpts1 = rebar_dir:src_dirs(AppOpts, []),
-
     {?RES, Name, tag, Tag} = lock(AppInfo, State),
-    rebar_log:log(debug, "Ensuring that tag ~s is cached", [Tag]),
+    rebar_api:debug("Ensuring that tag ~s is cached", [Tag]),
 
     Path = ensure_pkg(State, Tag),
-    rebar_log:log(debug, "Downloaded precompiled Elixir to ~s", [Path]),
+    rebar_api:debug("Downloaded precompiled Elixir to ~s", [Path]),
 
     NameAtom = binary_to_atom(Name),
     RebarConfig = filename:join(TmpDir, "rebar.config"),
@@ -111,7 +108,7 @@ extract_lib_from_pkg(Filename, App, Dest) ->
         fun(Name, _GetInfo, GetBin, Acc) ->
             case lists:prefix(Prefix, Name) andalso lists:last(Name) =/= $/ of
                 true ->
-                    rebar_log:log(debug, "Found file ~s in zip", [Name]),
+                    rebar_api:debug("Found file ~s in zip", [Name]),
 
                     % Unpack
                     NameWithoutPrefix = lists:nthtail(PrefixLen, Name),
@@ -134,7 +131,7 @@ find_matching({tag, Tag}) ->
 find_matching(Requirement) ->
     {ok, Req0} = verl:parse_requirement(list_to_binary("~> " ++ Requirement)),
     Req1 = verl:compile_requirement(Req0),
-    rebar_log:log(debug, "Trying to find release from requirement ~s", [Requirement]),
+    rebar_api:debug("Trying to find release from requirement ~s", [Requirement]),
     % TODO: Handle fully defined version? Cache release info?
     Releases = [
         Release
@@ -160,10 +157,10 @@ ensure_pkg(State, Version) ->
 
     case filelib:is_regular(DestPath) of
         true ->
-            rebar_log:log(debug, "File ~s exists", [DestPath]),
+            rebar_api:debug("File ~s exists", [DestPath]),
             ok;
         false ->
-            rebar_log:log(debug, "File ~s does not exist, downloading", [DestPath]),
+            rebar_api:debug("File ~s does not exist, downloading", [DestPath]),
             OtpVersion = erlang:system_info(otp_release),
             DataName = list_to_binary(["elixir-otp-", OtpVersion, ".zip"]),
             ChecksumName = <<DataName/binary, ".sha256sum">>,

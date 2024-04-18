@@ -6,6 +6,9 @@
     ensure_loaded/1
 ]).
 
+-define(Mix, 'Elixir.Mix').
+-define(MixSCM, 'Elixir.Mix.SCM').
+
 %% @doc Start an application and its dependencies and explicitly `error' in case
 %% it can not be started.
 -spec ensure_started(atom()) -> ok.
@@ -45,13 +48,12 @@ ensure_elixir() ->
         end,
 
     % Set debug output for mix
-    'Elixir.Mix':debug(Debug),
+    ?Mix:debug(Debug),
 
     exerl_mix_converger:register(),
-    'Elixir.Mix.SCM':prepend(exerl_mix_scm),
+    ?MixSCM:prepend(exerl_mix_scm),
 
     ok.
-
 
 -spec ensure_loaded([binary()]) -> ok.
 ensure_loaded(Deps) ->
@@ -59,10 +61,7 @@ ensure_loaded(Deps) ->
 
     % TODO: Ensure that all are part of the code path!
     CodePathAsMap = maps:from_list([
-        {
-            filename:basename(filename:dirname(P)),
-            P
-        }
+        {filename:basename(filename:dirname(P)), P}
      || P <- code:get_path()
     ]),
 

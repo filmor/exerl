@@ -10,7 +10,7 @@ exerl_build
 
 - [x] Compiler for individual .ex files
 - [x] Builder for Mix
-- [ ] Protocol consolidation
+- [x] Protocol consolidation
 - [ ] Verify release/escript support
 
 exerl_test?
