@@ -52,8 +52,8 @@ do(State) ->
 
     % Through adding the code path (which has previously been updated with
     % Elixir's paths), this will also consolidate the builtin protocols.
-    Paths = [rebar_app_info:ebin_dir(A) || A <- ProjectApps ++ Deps] ++ code:get_path(),
-    Protos = ?Protocol:extract_protocols(Paths),
+    Paths = lists:uniq([rebar_app_info:ebin_dir(A) || A <- ProjectApps ++ Deps] ++ code:get_path()),
+    Protos = lists:uniq(?Protocol:extract_protocols(Paths)),
 
     rebar_api:info("Consolidating ~p protocols ...", [length(Protos)]),
 
