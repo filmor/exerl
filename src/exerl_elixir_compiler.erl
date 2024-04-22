@@ -2,6 +2,8 @@
 
 -behaviour(rebar_compiler).
 
+-include("exerl.hrl").
+
 -export([
     context/1,
     needed_files/4,
@@ -11,8 +13,6 @@
 ]).
 
 % -include_lib("providers/include/providers.hrl").
-
--define(Compiler, 'Elixir.Kernel.ParallelCompiler').
 
 context(AppInfo) ->
     try
