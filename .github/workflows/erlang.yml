@@ -20,6 +20,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Check format
+      run: rebar3 fmt --check
     - name: Compile
       run: rebar3 compile
     - name: Run tests
