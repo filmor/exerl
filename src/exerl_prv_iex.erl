@@ -51,7 +51,9 @@ do(State) ->
 
     ok = shell:start_interactive({?IEx, start, [[{on_eof, halt}]]}),
 
-    receive after 10000 -> ok end,
+    receive
+    after 10000 -> ok
+    end,
 
     case shell:whereis() of
         undefined ->
@@ -59,7 +61,9 @@ do(State) ->
         Pid ->
             Ref = monitor(process, Pid),
 
-            receive {'DOWN', Ref, process, _, _} -> ok end
+            receive
+                {'DOWN', Ref, process, _, _} -> ok
+            end
     end,
 
     {ok, State}.

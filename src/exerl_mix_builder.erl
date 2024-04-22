@@ -60,7 +60,7 @@ build(AppInfo) ->
 
         rebar_api:debug("Resetting code path...", []),
         code:set_path(CodePath),
-        
+
         file:set_cwd(CurrentPwd),
         ok
     end.
