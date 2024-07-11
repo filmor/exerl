@@ -1,5 +1,7 @@
 -module(exerl).
 
+-ignore_xref([init/1]).
+
 -export([
     init/1
 ]).
