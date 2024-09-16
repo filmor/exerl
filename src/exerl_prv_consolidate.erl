@@ -47,26 +47,59 @@ do(State) ->
     Deps = rebar_state:all_deps(State),
     ProjectApps = rebar_state:project_apps(State),
 
-    OutDir = rebar_app_info:ebin_dir(hd(ProjectApps)),
+    TargetApp = hd(ProjectApps),
+    TargetAppName = ensure_atom(rebar_app_info:name(TargetApp)),
+    OutDir = rebar_app_info:ebin_dir(TargetApp),
     filelib:ensure_path(OutDir),
+
+    AppPathsFromDeps = maps:from_list([
+        {ensure_atom(rebar_app_info:name(A)), rebar_app_info:ebin_dir(A)}
+     || A <- ProjectApps ++ Deps
+    ]),
 
     % Through adding the code path (which has previously been updated with
     % Elixir's paths), this will also consolidate the builtin protocols.
-    Paths = lists:uniq([rebar_app_info:ebin_dir(A) || A <- ProjectApps ++ Deps] ++ code:get_path()),
-    Protos = lists:uniq(?Protocol:extract_protocols(Paths)),
+    AppPathsFromCode = maps:from_list([{get_app_name(P), P} || P <- code:get_path()]),
 
-    rebar_api:info("Consolidating ~p protocols ...", [length(Protos)]),
+    AppPaths = maps:without(
+        [TargetAppName, '$unused_app'],
+        maps:merge(AppPathsFromCode, AppPathsFromDeps)
+    ),
 
-    lists:foreach(
-        fun(Proto) ->
-            Impls = ?Protocol:extract_impls(Proto, Paths),
-            rebar_api:debug("Implementations of ~p:~n~p", [Proto, Impls]),
+    Paths = lists:uniq(maps:values(AppPaths)),
 
-            {ok, Consolidated} = ?Protocol:consolidate(Proto, Impls),
+    Protos = maps:filtermap(
+        fun(_, Path) ->
+            case ?Protocol:extract_protocols([Path]) of
+                [] ->
+                    false;
+                P ->
+                    {true, P}
+            end
+        end,
+        AppPaths
+    ),
 
-            Name = filename:join(OutDir, atom_to_list(Proto) ++ ".beam"),
-            file:write_file(Name, Consolidated),
-            ok
+    rebar_api:info(
+        "Consolidating ~p protocols ...",
+        [length(lists:flatten(maps:values(Protos)))]
+    ),
+
+    maps:foreach(
+        fun(App, PerAppProtos) ->
+            lists:foreach(
+                fun(Proto) ->
+                    Impls = ?Protocol:extract_impls(Proto, Paths),
+                    rebar_api:debug("Implementations of ~p from ~p:~n~p", [Proto, App, Impls]),
+
+                    {ok, Consolidated} = ?Protocol:consolidate(Proto, Impls),
+
+                    Name = filename:join(OutDir, atom_to_list(Proto) ++ ".beam"),
+                    file:write_file(Name, Consolidated),
+                    ok
+                end,
+                PerAppProtos
+            )
         end,
         Protos
     ),
@@ -75,8 +108,35 @@ do(State) ->
         Cwd, post, ?PROVIDER, Providers, State
     ),
 
-    {ok, State}.
+    State1 = update_relx_excludes(Protos, State),
 
+    {ok, State1}.
+
+update_relx_excludes(Protos, State) ->
+    Relx = rebar_state:get(State, relx, []),
+    ExcludeModules = proplists:get_value(exclude_modules, Relx, []),
+    ExcludeModules1 = proplists:from_map(Protos) ++ ExcludeModules,
+
+    Relx1 = [{exclude_modules, ExcludeModules1} | Relx],
+
+    rebar_state:set(State, relx, Relx1).
+
+get_app_name(EbinDir) ->
+    try
+        [AppFilename | _] = filelib:wildcard("*.app", EbinDir),
+        AppName = filename:rootname(AppFilename),
+        list_to_existing_atom(AppName)
+    catch
+        error:_ ->
+            '$unused_app'
+    end.
+
+ensure_atom(String) when is_list(String) ->
+    list_to_atom(String);
+ensure_atom(Binary) when is_binary(Binary) ->
+    binary_to_atom(Binary);
+ensure_atom(Atom) when is_atom(Atom) ->
+    Atom.
 -spec format_error(any()) -> iolist().
 format_error(no_app) ->
     io_lib:format("No so_name or application defined.", []);
