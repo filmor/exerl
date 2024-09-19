@@ -12,6 +12,8 @@
     make_vsn/2
 ]).
 
+% Lock format: version as a string
+
 -behaviour(rebar_resource_v2).
 -define(RES, ex).
 -define(FULL, elixir_full).
@@ -22,15 +24,16 @@ init(State) ->
     {ok, State1}.
 
 -spec init(atom(), rebar_state:t()) -> {ok, rebar_resource_v2:resource()}.
-init(Type, _State) ->
-    Resource = rebar_resource_v2:new(Type, ?MODULE, #{}),
+init(Type, State) ->
+    Builds = exerl_dep_builds:new(State),
+    Resource = rebar_resource_v2:new(Type, ?MODULE, Builds),
     {ok, Resource}.
 
-lock(AppInfo, _) ->
+lock(AppInfo, Builds) ->
     case rebar_app_info:source(AppInfo) of
         {?RES, Version} ->
             Name = rebar_app_info:name(AppInfo),
-            {tag, Version1} = find_matching(Version),
+            {tag, Version1} = find_matching(Version, Builds),
             {?RES, Name, tag, Version1};
         % {?RES, Name, Version} ->
         %     {tag, Version1} = find_matching(Version),
@@ -39,15 +42,15 @@ lock(AppInfo, _) ->
             Lock
     end.
 
-needs_update(AppInfo, _) ->
+needs_update(AppInfo, _Releases) ->
     {?RES, _Name, tag, Vsn} = rebar_app_info:source(AppInfo),
     rebar_api:debug("OldVsn: ~p, Vsn: ~p", [rebar_app_info:original_vsn(AppInfo), Vsn]),
     % TODO
     false.
 
-download(TmpDir, AppInfo, State, _MyState) ->
+download(TmpDir, AppInfo, State, Builds) ->
     try
-        do_download(TmpDir, AppInfo, State, _MyState)
+        do_download(TmpDir, AppInfo, State, Builds)
     catch
         Cat:Reason:St ->
             E = erl_error:format_exception(Cat, Reason, St),
@@ -55,11 +58,17 @@ download(TmpDir, AppInfo, State, _MyState) ->
             E
     end.
 
-do_download(TmpDir, AppInfo, State, _MyState) ->
-    {?RES, Name, tag, Tag} = lock(AppInfo, State),
+do_download(TmpDir, AppInfo, State, Builds) ->
+    {?RES, Name, tag, Tag} = lock(AppInfo, Builds),
     rebar_api:debug("Ensuring that tag ~s is cached", [Tag]),
 
-    Path = ensure_pkg(State, Tag),
+    [Build | _] = [
+        B
+     || B <- exerl_dep_builds:builds(Builds),
+        exerl_dep_build:tag(B) =:= Tag
+    ],
+
+    Path = ensure_pkg(State, Build),
     rebar_api:debug("Downloaded precompiled Elixir to ~s", [Path]),
 
     NameAtom = binary_to_atom(Name),
@@ -126,33 +135,35 @@ extract_lib_from_pkg(Filename, App, Dest) ->
 
     ok.
 
-find_matching({tag, Tag}) ->
+find_matching({tag, Tag}, _Builds) ->
     {tag, list_to_binary([Tag])};
-find_matching(Requirement) ->
+find_matching(Requirement, Builds) ->
     {ok, Req0} = verl:parse_requirement(list_to_binary("~> " ++ Requirement)),
     Req1 = verl:compile_requirement(Req0),
     rebar_api:debug("Trying to find release from requirement ~s", [Requirement]),
     % TODO: Handle fully defined version? Cache release info?
-    Releases = [
-        Release
-     || Release <- exerl_dep_pkg:get_releases(),
-        verl:is_match(exerl_dep_pkg:version(Release), Req1)
+    Builds1 = [
+        Build
+     || Build <- exerl_dep_builds:builds(Builds),
+        verl:is_match(exerl_dep_build:version(Build), Req1)
     ],
 
     [BestMatch | _] = lists:sort(
         fun(Lhs, Rhs) ->
-            verl:gt(exerl_dep_pkg:version(Lhs), exerl_dep_pkg:version(Rhs))
+            verl:gt(exerl_dep_build:version(Lhs), exerl_dep_build:version(Rhs))
         end,
-        Releases
+        Builds1
     ),
 
-    {tag, exerl_dep_pkg:tag(BestMatch)}.
+    {tag, exerl_dep_build:tag(BestMatch)}.
 
--spec ensure_pkg(rebar_state:t(), binary()) -> file:filename_all().
-ensure_pkg(State, Version) ->
+-spec ensure_pkg(rebar_state:t(), exerl_dep_build:t()) -> file:filename_all().
+ensure_pkg(State, Build) ->
     CacheDir = cache_dir(State),
 
-    Dest = list_to_binary(["elixir-", Version, ".ez"]),
+    Tag = exerl_dep_build:tag(Build),
+
+    Dest = list_to_binary(["elixir-", Tag, ".ez"]),
     DestPath = filename:join(CacheDir, Dest),
 
     case filelib:is_regular(DestPath) of
@@ -160,27 +171,21 @@ ensure_pkg(State, Version) ->
             rebar_api:debug("File ~s exists", [DestPath]),
             ok;
         false ->
-            rebar_api:debug("File ~s does not exist, downloading", [DestPath]),
-            OtpVersion = erlang:system_info(otp_release),
-            DataName = list_to_binary(["elixir-otp-", OtpVersion, ".zip"]),
-            ChecksumName = <<DataName/binary, ".sha256sum">>,
-
-            Rel = exerl_dep_pkg:get_release(Version),
-            Assets = exerl_dep_pkg:assets(Rel),
-            DataUrl = maps:get(DataName, Assets),
-            ChecksumUrl = maps:get(ChecksumName, Assets),
-
             filelib:ensure_dir(DestPath),
+            DataUrl = exerl_dep_build:url(Build),
+
+            rebar_api:debug("File ~s does not exist, downloading ~s", [DestPath, DataUrl]),
             exerl_dep_web:download_to_file(DataUrl, DestPath),
-            exerl_dep_web:download_to_file(ChecksumUrl, [DestPath, ".sha256sum"]),
+
+            Hash0 = binary:decode_hex(
+                binary:part(
+                    exerl_dep_build:sha256sum(Build), {0, 64}
+                )
+            ),
 
             % Verify checksum:
             {ok, Data} = file:read_file(DestPath),
-            Hash0 = crypto:hash(sha256, Data),
-
-            {ok, SumData} = file:read_file(list_to_binary([DestPath, ".sha256sum"])),
-            % First 64 bytes decoded
-            Hash1 = binary:decode_hex(binary:part(SumData, {0, 64})),
+            Hash1 = crypto:hash(sha256, Data),
 
             case Hash1 of
                 Hash0 ->

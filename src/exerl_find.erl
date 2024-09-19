@@ -5,6 +5,7 @@
     set_code_path/0
 ]).
 
+-spec set_code_path() -> ok | already_added.
 set_code_path() ->
     case code:which(elixir) of
         non_existing ->
@@ -20,6 +21,7 @@ set_code_path() ->
             already_added
     end.
 
+-spec from_executable() -> binary().
 from_executable() ->
     Ex =
         case os:find_executable("elixir") of
