@@ -20,18 +20,25 @@
 get_release(Tag) when is_binary(Tag) ->
     Path = list_to_binary(["/repos/elixir-lang/elixir/releases/tags/", Tag]),
     GHRelease = exerl_dep_web:github_api(Path),
-    to_rec(GHRelease).
+    {true, Release} = to_rec(GHRelease),
+    Release.
 
+to_rec(#{<<"prerelease">> := Pre}) when Pre =:= true ->
+    false;
 to_rec(#{<<"tag_name">> := Tag, <<"assets">> := Assets}) ->
-    {ok, Version} = verl:parse(binary:part(Tag, {1, byte_size(Tag) - 1})),
-    #release{
-        tag = Tag,
-        version = Version,
-        assets = maps:from_list([
-            {Name, DownloadUrl}
-         || #{<<"name">> := Name, <<"browser_download_url">> := DownloadUrl} <- Assets
-        ])
-    }.
+    case verl:parse(binary:part(Tag, {1, byte_size(Tag) - 1})) of
+        {ok, Version} ->
+            {true, #release{
+                tag = Tag,
+                version = Version,
+                assets = maps:from_list([
+                    {Name, DownloadUrl}
+                 || #{<<"name">> := Name, <<"browser_download_url">> := DownloadUrl} <- Assets
+                ])
+            }};
+        _ ->
+            false
+    end.
 
 assets(#release{assets = A}) -> A.
 tag(#release{tag = T}) -> T.
@@ -53,4 +60,7 @@ find_newest_version(VersionPrefix) ->
 
 get_releases() ->
     Decoded = exerl_dep_web:github_api("/repos/elixir-lang/elixir/releases"),
-    [to_rec(T) || T = #{<<"prerelease">> := Pre} <- Decoded, not Pre].
+    lists:filtermap(
+        fun to_rec/1,
+        Decoded
+    ).
