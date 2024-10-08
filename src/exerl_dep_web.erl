@@ -1,9 +1,8 @@
 -module(exerl_dep_web).
 
 -export([
-    % tls_opts/0,
-    download_to_file/2,
-    github_api/1
+    tls_opts/0,
+    download_to_file/2
 ]).
 
 -define(USER_AGENT, "exerl/0").
@@ -20,58 +19,6 @@ download_to_file(Url, Dest) ->
         [{stream, DestS}]
     ),
     ok.
-
--spec github_api(iodata()) -> thoas:json_term().
-github_api(Path) ->
-    Path1 =
-        if
-            is_binary(Path) -> Path;
-            is_list(Path) -> list_to_binary(Path)
-        end,
-
-    Uri =
-        case
-            uri_string:recompose(#{
-                scheme => "https",
-                host => "api.github.com",
-                path => Path1
-            })
-        of
-            {error, ErrAtom, ErrTerm} ->
-                error({ErrAtom, ErrTerm});
-            Else ->
-                Else
-        end,
-
-    Auth =
-        case os:getenv("GITHUB_TOKEN") of
-            false ->
-                [];
-            Token ->
-                [{"Auth", "Bearer: " ++ Token}]
-        end,
-
-    {ok, Result} = httpc:request(
-        get,
-        {
-            Uri,
-            [
-                {"Accept", "application/vnd.github+json"},
-                {"X-GitHub-Api-Version", "2022-11-28"},
-                {"User-Agent", ?USER_AGENT}
-            ] ++ Auth
-        },
-        [{ssl, tls_opts()}],
-        [{body_format, binary}]
-    ),
-
-    case Result of
-        {{_, 200, _}, _Headers, Body} when is_binary(Body) ->
-            {ok, Map} = thoas:decode(Body),
-            Map;
-        {{_, HttpCode, _}, _Headers, _Body} ->
-            error({http_code, HttpCode})
-    end.
 
 %% @doc Return options for `ssl' functions that use the system certificate store
 -spec tls_opts() -> [ssl:tls_option()].
