@@ -11,6 +11,7 @@
 -define(Logger, 'Elixir.Logger').
 -define(Mix, 'Elixir.Mix').
 -define(Project, 'Elixir.Mix.Project').
+-define(ProjectStack, 'Elixir.Mix.ProjectStack').
 -define(Protocol, 'Elixir.Protocol').
 -define(Scm, 'Elixir.Mix.SCM').
 -define(Task, 'Elixir.Mix.Task').

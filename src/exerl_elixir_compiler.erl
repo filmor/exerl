@@ -9,6 +9,7 @@
     needed_files/4,
     dependencies/3,
     compile/4,
+    compile_and_track/4,
     clean/2
 ]).
 
@@ -16,6 +17,16 @@
 
 context(AppInfo) ->
     try
+        exerl_util:ensure_elixir(),
+        exerl_util:ensure_started(mix),
+
+        AppName = binary_to_atom(rebar_app_info:name(AppInfo)),
+        ?ProjectStack:push(
+            AppName,
+            [{app, AppName}],
+            <<"nofile">>
+        ),
+
         EbinDir = rebar_app_info:ebin_dir(AppInfo),
         Mappings = [{".beam", EbinDir}],
 
@@ -51,22 +62,27 @@ needed_files(_Graph, FoundFiles, _, _AppInfo) ->
 dependencies(_Source, _SourceDir, _Dirs) ->
     [].
 
-compile(Source, [{_, OutDir}], _Config, _Opts) ->
-    exerl_util:ensure_elixir(),
-    exerl_util:ensure_started(mix),
+compile_and_track(Source, [{_, OutDir}], _Config, _Opts) ->
     case
         ?Compiler:compile_to_path(
             [list_to_binary(Source)],
             list_to_binary(OutDir)
         )
     of
-        {ok, Modules, _Warnings} ->
+        {ok, Modules, Warnings} ->
             rebar_api:debug("[exerl] Compiled ~p from ~s", [Modules, Source]),
-            ok;
+            ModuleToPath = fun(Module) ->
+                filename:join(OutDir, atom_to_list(Module) ++ ".beam")
+            end,
+            {ok, [{Source, ModuleToPath(Module), #{}} || Module <- Modules], Warnings};
         {error, _, _} ->
             rebar_api:debug("[exerl] Failed to compile ~s", [Source]),
             error
     end.
+
+compile(_, _, _, _) ->
+    % Only added because the compiler behaviour expects it
+    error(not_implemented).
 
 clean(Files, AppInfo) ->
     OutDir = rebar_app_info:ebin_dir(AppInfo),
