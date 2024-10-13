@@ -103,6 +103,8 @@ maybe_download_builds(Etag, S) ->
             NewEtag = proplists:get_value("etag", HeadersIn),
 
             #state{cache_path = CacheFname, etag_path = EtagFname} = S,
+            ok = filelib:ensure_dir(EtagFname),
+            ok = filelib:ensure_dir(CacheFname),
 
             ok = file:write_file(EtagFname, NewEtag),
             ok = file:write_file(CacheFname, Body),
