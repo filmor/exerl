@@ -24,5 +24,7 @@ jobs:
       run: rebar3 fmt --check
     - name: Compile
       run: rebar3 compile
+    - name: Self-link
+      run: "mkdir _checkouts && ln -s .. _checkouts/exerl"
     - name: Run tests
       run: rebar3 do eunit, ct
