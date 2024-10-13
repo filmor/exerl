@@ -41,7 +41,7 @@ context(AppInfo) ->
         }
     catch
         Error:Reason:St ->
-            rebar_api:debug("~s", [erl_error:format_exception(Error, Reason, St)]),
+            rebar_api:debug("[exerl] ~s", [erl_error:format_exception(Error, Reason, St)]),
             error(Reason)
     end.
 
@@ -54,13 +54,19 @@ dependencies(_Source, _SourceDir, _Dirs) ->
 compile(Source, [{_, OutDir}], _Config, _Opts) ->
     exerl_util:ensure_elixir(),
     exerl_util:ensure_started(mix),
-    {ok, Modules, _Warnings} = ?Compiler:compile_to_path(
-        [list_to_binary(Source)],
-        list_to_binary(OutDir)
-    ),
-    rebar_api:debug("Compiled ~p from ~s", [Modules, Source]),
-
-    ok.
+    case
+        ?Compiler:compile_to_path(
+            [list_to_binary(Source)],
+            list_to_binary(OutDir)
+        )
+    of
+        {ok, Modules, _Warnings} ->
+            rebar_api:debug("[exerl] Compiled ~p from ~s", [Modules, Source]),
+            ok;
+        {error, _, _} ->
+            rebar_api:debug("[exerl] Failed to compile ~s", [Source]),
+            error
+    end.
 
 clean(Files, AppInfo) ->
     OutDir = rebar_app_info:ebin_dir(AppInfo),
