@@ -21,7 +21,8 @@ context(AppInfo) ->
         exerl_util:ensure_started(mix),
 
         AppName = binary_to_atom(rebar_app_info:name(AppInfo)),
-        ?ProjectStack:push(
+        IsMix = mix =:= rebar_app_info:project_type(AppInfo),
+        IsMix andalso ?ProjectStack:push(
             AppName,
             [{app, AppName}],
             <<"nofile">>
