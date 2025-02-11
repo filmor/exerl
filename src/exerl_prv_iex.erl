@@ -49,22 +49,7 @@ do(State) ->
     {ok, _} = application:ensure_all_started(elixir),
     {ok, _} = application:ensure_all_started(iex),
 
-    ok = shell:start_interactive({?IEx, start, [[{on_eof, halt}]]}),
-
-    receive
-    after 10000 -> ok
-    end,
-
-    case shell:whereis() of
-        undefined ->
-            error(failed_to_start_iex);
-        Pid ->
-            Ref = monitor(process, Pid),
-
-            receive
-                {'DOWN', Ref, process, _, _} -> ok
-            end
-    end,
+    ?IExServer:run([]),
 
     {ok, State}.
 

@@ -8,6 +8,7 @@
 -define(HexConv, 'Elixir.Hex.RemoteConverger').
 -define(HexScm, 'Elixir.Hex.SCM').
 -define(IEx, 'Elixir.IEx').
+-define(IExServer, 'Elixir.IEx.Server').
 -define(Logger, 'Elixir.Logger').
 -define(Mix, 'Elixir.Mix').
 -define(Project, 'Elixir.Mix.Project').
