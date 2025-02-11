@@ -49,7 +49,12 @@ do(State) ->
     {ok, _} = application:ensure_all_started(elixir),
     {ok, _} = application:ensure_all_started(iex),
 
-    ?IExServer:run([]),
+    user_drv:start_shell(#{initial_shell => iex}),
+
+    % IEx halts the runtime on exit, so we can just wait forever
+    receive
+        after infinity -> ok
+    end,
 
     {ok, State}.
 
