@@ -47,38 +47,44 @@ do(State) ->
     Deps = rebar_state:all_deps(State),
     ProjectApps = rebar_state:project_apps(State),
 
-    OutDir = rebar_app_info:ebin_dir(hd(ProjectApps)),
-    filelib:ensure_path(OutDir),
+    case ProjectApps of
+        [] ->
+            rebar_api:error("No project apps found, no place to put consolidated protocols", []),
+            {ok, State};
+        [FirstApp | _] = ProjectApps ->
+            OutDir = rebar_app_info:ebin_dir(FirstApp),
+            filelib:ensure_path(OutDir),
 
-    % Through adding the code path (which has previously been updated with
-    % Elixir's paths), this will also consolidate the builtin protocols.
-    Paths = lists:uniq([rebar_app_info:ebin_dir(A) || A <- ProjectApps ++ Deps] ++ code:get_path()),
-    Protos = lists:uniq(?Protocol:extract_protocols(Paths)),
+            % Through adding the code path (which has previously been updated with
+            % Elixir's paths), this will also consolidate the builtin protocols.
+            Paths = lists:uniq(
+                [rebar_app_info:ebin_dir(A) || A <- ProjectApps ++ Deps] ++ code:get_path()
+            ),
+            Protos = lists:uniq(?Protocol:extract_protocols(Paths)),
 
-    rebar_api:info("Consolidating ~p protocols ...", [length(Protos)]),
+            rebar_api:info("Consolidating ~p protocols ...", [length(Protos)]),
 
-    lists:foreach(
-        fun(Proto) ->
-            Impls = ?Protocol:extract_impls(Proto, Paths),
-            rebar_api:debug("Implementations of ~p:~n~p", [Proto, Impls]),
+            lists:foreach(
+                fun(Proto) ->
+                    Impls = ?Protocol:extract_impls(Proto, Paths),
+                    rebar_api:debug("Implementations of ~p:~n~p", [Proto, Impls]),
 
-            {ok, Consolidated} = ?Protocol:consolidate(Proto, Impls),
+                    {ok, Consolidated} = ?Protocol:consolidate(Proto, Impls),
 
-            Name = filename:join(OutDir, atom_to_list(Proto) ++ ".beam"),
-            file:write_file(Name, Consolidated),
-            ok
-        end,
-        Protos
-    ),
+                    Name = filename:join(OutDir, atom_to_list(Proto) ++ ".beam"),
+                    file:write_file(Name, Consolidated),
+                    ok
+                end,
+                Protos
+            ),
 
-    rebar_hooks:run_all_hooks(
-        Cwd, post, ?PROVIDER, Providers, State
-    ),
+            rebar_hooks:run_all_hooks(
+                Cwd, post, ?PROVIDER, Providers, State
+            ),
 
-    {ok, State}.
+            {ok, State}
+    end.
 
 -spec format_error(any()) -> iolist().
-format_error(no_app) ->
-    io_lib:format("No so_name or application defined.", []);
 format_error(Reason) ->
     io_lib:format("~p", [Reason]).
