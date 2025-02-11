@@ -65,7 +65,7 @@ read(State = #state{cache_path = CacheFname, etag_path = EtagFname}) ->
                 {ok, Cache} ->
                     case parse(Cache) of
                         {ok, Builds} ->
-                            #state{
+                            State#state{
                                 builds = Builds, etag = Etag
                             };
                         _Err ->
