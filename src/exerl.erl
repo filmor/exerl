@@ -32,7 +32,7 @@ init(State) ->
 
     try
         ScriptName = escript:script_name(),
-        os:putenv("MIX_REBAR3", filename:absname(ScriptName))
+        os:putenv("MIX_REBAR3", ensure_string(filename:absname(ScriptName)))
     catch
         error:_ ->
             ok
@@ -52,7 +52,5 @@ init(State) ->
 
     {ok, State5}.
 
-ensure_string(V) when is_binary(V) ->
-    binary_to_list(V);
-ensure_string(V) when is_list(V) ->
-    V.
+ensure_string(V) ->
+    exerl_util:ensure_string(V).

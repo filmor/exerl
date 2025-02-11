@@ -20,6 +20,7 @@ context(AppInfo) ->
         exerl_util:ensure_elixir(),
         exerl_util:ensure_started(mix),
 
+        % elp:ignore W0023 (atoms_exhaustion)
         AppName = binary_to_atom(rebar_app_info:name(AppInfo)),
         ?ProjectStack:push(
             AppName,
@@ -27,7 +28,7 @@ context(AppInfo) ->
             <<"nofile">>
         ),
 
-        EbinDir = rebar_app_info:ebin_dir(AppInfo),
+        EbinDir = exerl_util:ensure_string(rebar_app_info:ebin_dir(AppInfo)),
         Mappings = [{".beam", EbinDir}],
 
         OutDir = rebar_app_info:dir(AppInfo),

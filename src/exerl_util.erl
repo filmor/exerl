@@ -5,7 +5,8 @@
 -export([
     ensure_elixir/0,
     ensure_started/1,
-    ensure_loaded/1
+    ensure_loaded/1,
+    ensure_string/1
 ]).
 
 %% @doc Start an application and its dependencies and explicitly `error' in case
@@ -75,15 +76,31 @@ ensure_loaded(Deps) ->
     ),
 
     ModulesToLoad = [
+        % elp:ignore W0023 (atoms_exhaustion)
         list_to_atom(Mod)
      || {Mod, ModPath, IsLoaded} <- code:all_available(),
         not IsLoaded,
-        lists:any(
-            fun(P) -> string:prefix(ModPath, P) =/= nomatch end,
-            Paths
-        )
+        % ModPath may be 'precompiled' or 'cover_compiled' in some cases, so filter
+        % these here (see code:is_loaded/1)
+        if
+            is_atom(ModPath) ->
+                false;
+            true ->
+                lists:any(
+                    fun(P) -> string:prefix(ModPath, P) =/= nomatch end,
+                    Paths
+                )
+        end
     ],
 
     rebar_api:debug("[exerl] Loading dependency modules: ~p", [ModulesToLoad]),
     code:ensure_modules_loaded(ModulesToLoad),
     ok.
+
+-spec ensure_string(string() | binary() | list() | atom()) -> string().
+ensure_string(V) when is_binary(V) ->
+    binary_to_list(V);
+ensure_string(V) when is_list(V) ->
+    lists:flatten(V);
+ensure_string(V) when is_atom(V) ->
+    atom_to_list(V).

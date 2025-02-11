@@ -27,9 +27,14 @@ new(RebarState) ->
 
 -spec builds(t()) -> [exerl_dep_build:t()].
 builds(State) ->
-    (ensure(State))#state.builds.
+    case (ensure(State))#state.builds of
+        undefined ->
+            error(failed_to_load_builds);
+        L ->
+            L
+    end.
 
--spec update(t()) -> ok.
+-spec update(t()) -> t().
 update(#state{etag = Etag} = S) ->
     case maybe_download_builds(Etag, S) of
         {ok, _} ->
@@ -38,7 +43,7 @@ update(#state{etag = Etag} = S) ->
             error(Err)
     end.
 
--spec ensure(t()) -> ok.
+-spec ensure(t()) -> t().
 ensure(State) ->
     State1 = read(State),
 
@@ -98,7 +103,7 @@ maybe_download_builds(Etag, S) ->
             []
         )
     of
-        {ok, {{_, 200, _}, HeadersIn, Body}} ->
+        {ok, {{_, 200, _}, HeadersIn, Body}} when is_binary(Body), is_list(HeadersIn) ->
             rebar_api:debug("[exerl] Got new builds file", []),
             NewEtag = proplists:get_value("etag", HeadersIn),
 

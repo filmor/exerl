@@ -71,6 +71,7 @@ do_download(TmpDir, AppInfo, State, Builds) ->
     Path = ensure_pkg(State, Build),
     rebar_api:debug("Downloaded precompiled Elixir to ~s", [Path]),
 
+    % elp:ignore W0023 (atoms_exhaustion)
     NameAtom = binary_to_atom(Name),
     RebarConfig = filename:join(TmpDir, "rebar.config"),
 
@@ -114,7 +115,8 @@ extract_lib_from_pkg(Filename, App, Dest) ->
     PrefixLen = length(Prefix),
 
     {ok, _} = zip:foldl(
-        fun(Name, _GetInfo, GetBin, Acc) ->
+        fun(Name0, _GetInfo, GetBin, Acc) ->
+            Name = ensure_string(Name0),
             case lists:prefix(Prefix, Name) andalso lists:last(Name) =/= $/ of
                 true ->
                     rebar_api:debug("Found file ~s in zip", [Name]),
@@ -142,15 +144,24 @@ find_matching(Requirement, Builds) ->
     Req1 = verl:compile_requirement(Req0),
     rebar_api:debug("Trying to find release from requirement ~s", [Requirement]),
     % TODO: Handle fully defined version? Cache release info?
+    Builds0 = exerl_dep_builds:builds(Builds),
+
     Builds1 = [
         Build
-     || Build <- exerl_dep_builds:builds(Builds),
+     || Build <- Builds0,
         verl:is_match(exerl_dep_build:version(Build), Req1)
     ],
 
+    case Builds1 of
+        [] ->
+            error(no_matching_builds);
+        _ ->
+            ok
+    end,
+
     [BestMatch | _] = lists:sort(
         fun(Lhs, Rhs) ->
-            verl:gt(exerl_dep_build:version(Lhs), exerl_dep_build:version(Rhs))
+            verl:gt(exerl_dep_build:version(Lhs), exerl_dep_build:version(Rhs)) =:= true
         end,
         Builds1
     ),
@@ -215,3 +226,8 @@ deps(mix) -> [elixir, eex, logger];
 deps(ex_unit) -> [mix];
 deps(iex) -> [iex];
 deps(elixir_full) -> [elixir, eex, iex, logger, mix, ex_unit].
+
+ensure_string(V) when is_binary(V) ->
+    binary_to_list(V);
+ensure_string(V) when is_list(V) ->
+    V.

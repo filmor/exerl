@@ -16,7 +16,7 @@
 
 -record(build, {
     name :: binary(),
-    version :: verl:version() | undefined,
+    version :: verl:version_t() | undefined,
     version_raw :: binary() | undefined,
     otp_version :: non_neg_integer() | undefined,
     commit :: binary(),
