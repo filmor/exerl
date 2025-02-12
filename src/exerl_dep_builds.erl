@@ -100,7 +100,7 @@ maybe_download_builds(Etag, S) ->
             get,
             {?BUILDS_URI, Headers1},
             [{ssl, exerl_dep_web:tls_opts()}],
-            []
+            [{body_format, binary}]
         )
     of
         {ok, {{_, 200, _}, HeadersIn, Body}} when is_binary(Body), is_list(HeadersIn) ->
