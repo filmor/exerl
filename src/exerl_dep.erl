@@ -143,16 +143,17 @@ find_matching(Requirement, Builds) ->
     {ok, Req0} = verl:parse_requirement(list_to_binary("~> " ++ Requirement)),
     Req1 = verl:compile_requirement(Req0),
     rebar_api:debug("Trying to find release from requirement ~s", [Requirement]),
-    % TODO: Handle fully defined version? Cache release info?
-    Builds0 = exerl_dep_builds:builds(Builds),
+    Builds1 = matching_builds(Req1, exerl_dep_builds:builds(Builds)),
+    Builds2 =
+        case Builds1 of
+            [] ->
+                % Refresh stale builds cache once before failing.
+                matching_builds(Req1, exerl_dep_builds:builds(exerl_dep_builds:update(Builds)));
+            _ ->
+                Builds1
+        end,
 
-    Builds1 = [
-        Build
-     || Build <- Builds0,
-        verl:is_match(exerl_dep_build:version(Build), Req1)
-    ],
-
-    case Builds1 of
+    case Builds2 of
         [] ->
             error(no_matching_builds);
         _ ->
@@ -163,10 +164,17 @@ find_matching(Requirement, Builds) ->
         fun(Lhs, Rhs) ->
             verl:gt(exerl_dep_build:version(Lhs), exerl_dep_build:version(Rhs)) =:= true
         end,
-        Builds1
+        Builds2
     ),
 
     {tag, exerl_dep_build:tag(BestMatch)}.
+
+matching_builds(Requirement, Builds) ->
+    [
+        Build
+     || Build <- Builds,
+        verl:is_match(exerl_dep_build:version(Build), Requirement)
+    ].
 
 -spec ensure_pkg(rebar_state:t(), exerl_dep_build:t()) -> file:filename_all().
 ensure_pkg(State, Build) ->
