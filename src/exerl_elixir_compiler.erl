@@ -23,17 +23,6 @@
 -spec context(rebar_app_info:t()) -> map().
 context(AppInfo) ->
     try
-        exerl_util:ensure_elixir(),
-        exerl_util:ensure_started(mix),
-
-        % elp:ignore W0023 (atoms_exhaustion)
-        AppName = binary_to_atom(rebar_app_info:name(AppInfo)),
-        ?ProjectStack:push(
-            AppName,
-            [{app, AppName}],
-            <<"nofile">>
-        ),
-
         EbinDir = exerl_util:ensure_string(rebar_app_info:ebin_dir(AppInfo)),
         Mappings = [{".beam", EbinDir}],
 
@@ -44,11 +33,27 @@ context(AppInfo) ->
             SrcDirs
         ),
 
-        _RebarOpts = rebar_app_info:opts(AppInfo),
-
-        % Ensure that the Elixir compiler does not load the previously built
-        % binaries and complains about it
-        code:del_path(EbinDir),
+        % Rebar also invokes this compiler for Erlang-only plugins before fetching dependencies.
+        HasElixir = lists:any(
+            fun(Dir) ->
+                filelib:fold_files(
+                    filename:join(OutDir, Dir), "\\.ex$", true, fun(_, _) -> true end, false
+                )
+            end,
+            ExistingSrcDirs
+        ),
+        case HasElixir of
+            true ->
+                exerl_util:ensure_elixir(),
+                exerl_util:ensure_started(mix),
+                % elp:ignore W0023 (atoms_exhaustion)
+                AppName = binary_to_atom(rebar_app_info:name(AppInfo)),
+                ?ProjectStack:push(AppName, [{app, AppName}], <<"nofile">>),
+                % Do not load previously compiled Elixir modules while recompiling them.
+                code:del_path(EbinDir);
+            false ->
+                ok
+        end,
 
         #{
             src_dirs => ExistingSrcDirs,

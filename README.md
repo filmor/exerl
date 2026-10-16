@@ -75,6 +75,8 @@ Mix dependency builds run with an isolated project stack so Elixir 1.20 does not
 reuse another project's dependency cache. Compiler diagnostics are returned to
 Rebar as printable messages. The fixture's release configuration also excludes
 Elixir's original `JSON.Encoder` protocol, keeping the consolidated copy instead.
+Erlang-only applications and plugins do not start Elixir, preventing the host
+installation from being initialized before the project's Elixir dependency loads.
 
 GitHub Actions runs EUnit and Common Test on all supported combinations of
 OTP 27-29 and Elixir 1.17-1.20, with patch versions pinned in the workflow:
