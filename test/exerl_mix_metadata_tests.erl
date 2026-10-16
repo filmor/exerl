@@ -27,20 +27,17 @@ cleanup(Dir) ->
     ok = file:del_dir_r(Dir).
 
 write_project(Dir, Version) ->
-    ok = file:write_file(filename:join(Dir, "mix.exs"), [
-        "defmodule MetadataFixture.MixProject do\n"
-        "  use Mix.Project\n"
-        "  def project do\n"
-        "    [app: :metadata_fixture, version: \"",
-        Version,
-        "\", deps: [\n"
-        "      {:runtime_app, \"~> 1.0\", hex: :runtime_package},\n"
-        "      {:optional_dep, \"~> 2.0\", optional: true},\n"
-        "      {:dev_dep, \"~> 3.0\", only: :dev}\n"
-        "    ]]\n"
-        "  end\n"
-        "end\n"
-    ]).
+    Template = read_fixture("mix.exs"),
+    ok = file:write_file(
+        filename:join(Dir, "mix.exs"),
+        binary:replace(Template, ~"VERSION", list_to_binary(Version))
+    ).
+
+read_fixture(Name) ->
+    Source = proplists:get_value(source, ?MODULE:module_info(compile)),
+    Path = filename:join([filename:dirname(Source), "exerl_mix_metadata_tests_data", Name]),
+    {ok, Data} = file:read_file(Path),
+    Data.
 
 generates_dependencies(Dir) ->
     ok = exerl_mix_metadata:generate(Dir),
@@ -122,14 +119,7 @@ restores_mix_state(Dir) ->
             ?assertEqual(false, code:is_loaded('Elixir.MetadataFixture.MixProject')),
             ok = file:write_file(
                 filename:join(Dir, "mix.exs"),
-                ~"""
-                defmodule MetadataFixture.MixProject do
-                  use Mix.Project
-                  def project, do: [app: :metadata_fixture, version: "0.1.0", deps: [
-                    {:local_dep, path: "../local_dep"}
-                  ]]
-                end
-                """
+                read_fixture("local_mix.exs")
             ),
             ?assertException(throw, rebar_abort, exerl_mix_metadata:generate(Dir)),
             ?assertEqual(Project, 'Elixir.Mix.ProjectStack':peek()),

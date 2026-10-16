@@ -67,52 +67,17 @@ end_per_suite(_Config) ->
 -doc "Compile all top-level and nested Elixir modules alongside Erlang sources.".
 -spec compiled_sources(config()) -> ok.
 compiled_sources(Config) ->
-    eval(
-        Config,
-        lib_dir(Config),
-        version_check() ++
-            "Modules = [\"Elixir.\" ++ Prefix ++ Name"
-            " || Prefix <- [\"\", \"Test2.\", \"Test3.\"],"
-            " Name <- [\"Bla\" | [\"Bla\" ++ integer_to_list(N) || N <- lists:seq(1, 9)]]],"
-            "lists:foreach(fun(Name) -> 1 = (list_to_atom(Name)):a() end, Modules),"
-            "test4 = test4:module_info(module),"
-            "ok = application:set_env(tzdata, autoupdate, disabled),"
-            "{ok, _} = application:ensure_all_started(exerl_test),"
-            "[_ | _] = blubb:aliases(),"
-            "halt(0)."
-    ).
+    eval(Config, "compiled_sources").
 
 -doc "Build both Rebar and Mix dependencies and generate loadable OTP applications.".
 -spec mix_dependencies(config()) -> ok.
 mix_dependencies(Config) ->
-    eval(
-        Config,
-        lib_dir(Config),
-        "lists:foreach(fun(App) -> ok = application:load(App) end,"
-        " [hackney, tzdata, easter, phoenix, bandit, recon, explorer, protobuf]),"
-        "lists:foreach(fun(Module) -> {module, Module} = code:ensure_loaded(Module) end,"
-        " [hackney, 'Elixir.Tzdata', 'Elixir.Easter', 'Elixir.Phoenix',"
-        " 'Elixir.Bandit', recon, 'Elixir.Explorer', 'Elixir.Protobuf']),"
-        "halt(0)."
-    ).
+    eval(Config, "mix_dependencies").
 
 -doc "The post-compile hook emits consolidated protocols into the consumer application.".
 -spec consolidated_protocols(config()) -> ok.
 consolidated_protocols(Config) ->
-    Ebin = filename:join([lib_dir(Config), "exerl_test", "ebin"]),
-    eval(
-        Config,
-        lib_dir(Config),
-        lists:flatten(
-            io_lib:format(
-                "lists:foreach(fun(Protocol) ->"
-                " {module, Protocol} = code:load_abs(filename:join(~tp, atom_to_list(Protocol))),"
-                " true = 'Elixir.Protocol':'consolidated?'(Protocol)"
-                " end, ~tp), halt(0).",
-                [Ebin, protocols(Config)]
-            )
-        )
-    ).
+    eval(Config, "consolidated_protocols").
 
 -doc "Remove consolidated copies when a dependency changes a protocol into a regular module.".
 -spec stale_dependency_protocol(config()) -> ok.
@@ -120,42 +85,10 @@ stale_dependency_protocol(Config) ->
     Ebin = filename:join([lib_dir(Config), "exerl_test", "ebin"]),
     Temp = filename:join(?config(priv_dir, Config), "old_protocol"),
     ok = filelib:ensure_dir(filename:join(Temp, "placeholder")),
-    eval(
-        Config,
-        lib_dir(Config),
-        lists:flatten(
-            io_lib:format(
-                "{ok, _} = application:ensure_all_started(elixir),"
-                "Original = code:which('Elixir.Easter'),"
-                "{ok, {_, [{compile_info, Info}]}} = beam_lib:chunks(Original, [compile_info]),"
-                "{source, Source} = lists:keyfind(source, 1, Info),"
-                "[{Module, Beam}] = 'Elixir.Code':compile_string("
-                " ~w, list_to_binary(Source)),"
-                "Name = atom_to_list(Module) ++ \".beam\","
-                "ok = file:write_file(filename:join(~tp, Name), Beam),"
-                "true = code:add_patha(~tp),"
-                "true = code:soft_purge(Module),"
-                "{module, Module} = code:load_abs(filename:join(~tp, atom_to_list(Module))),"
-                "{ok, Consolidated} = 'Elixir.Protocol':consolidate(Module, []),"
-                "ok = file:write_file(filename:join(~tp, Name), Consolidated), halt(0).",
-                [
-                    ~"defprotocol Easter do\n  def stale(value)\nend\n",
-                    Temp,
-                    Temp,
-                    Temp,
-                    Ebin
-                ]
-            )
-        )
-    ),
+    eval(Config, "stale_dependency_protocol"),
     run(?config(rebar, Config), ["consolidate_protocols"], ?config(project, Config)),
     ?assertNot(filelib:is_regular(filename:join(Ebin, "Elixir.Easter.beam"))),
-    eval(
-        Config,
-        lib_dir(Config),
-        "{module, 'Elixir.Easter'} = code:ensure_loaded('Elixir.Easter'),"
-        "false = erlang:function_exported('Elixir.Easter', '__protocol__', 1), halt(0)."
-    ).
+    eval(Config, "regular_dependency").
 
 -doc "Assemble a release retaining consolidated protocols but excluding their originals.".
 -spec release(config()) -> ok.
@@ -185,19 +118,6 @@ release(Config) ->
         protocols(Config)
     ),
     BinDir = filename:join([code:root_dir(), "erts-" ++ erlang:system_info(version), "bin"]),
-    Expression = lists:flatten(
-        io_lib:format(
-            "1 = 'Elixir.Bla':a(), [_ | _] = blubb:aliases(),"
-            "{ok, Originals} = application:get_key(elixir, modules),"
-            "{ok, Consolidated} = application:get_key(exerl_test, modules),"
-            "lists:foreach(fun(Protocol) ->"
-            " false = lists:member(Protocol, Originals),"
-            " true = lists:member(Protocol, Consolidated),"
-            " true = 'Elixir.Protocol':'consolidated?'(Protocol)"
-            " end, ~tp), halt(0).",
-            [protocols(Config)]
-        )
-    ),
     run(
         filename:join(BinDir, "erlexec"),
         [
@@ -208,10 +128,8 @@ release(Config) ->
             filename:join([Release, "releases", "0.0.1", "start"]),
             "-tzdata",
             "autoupdate",
-            "disabled",
-            "-eval",
-            Expression
-        ],
+            "disabled"
+        ] ++ check_args(Config, "release"),
         Project,
         [{"ROOTDIR", Release}, {"BINDIR", BinDir}, {"EMU", "beam"}, {"PROGNAME", "erl"}]
     ).
@@ -237,16 +155,6 @@ select_elixir(Project) ->
             )
     end.
 
-version_check() ->
-    case os:getenv("EXERL_TEST_ELIXIR") of
-        false ->
-            "";
-        Version ->
-            lists:flatten(
-                io_lib:format("~w = 'Elixir.System':version(),", [list_to_binary(Version)])
-            )
-    end.
-
 protocols(Config) ->
     [
         'Elixir.String.Chars',
@@ -264,11 +172,25 @@ protocols(Config) ->
             false -> []
         end.
 
-eval(Config, LibDir, Expression) ->
-    Paths = filelib:wildcard(filename:join([LibDir, "*", "ebin"])),
+check_args(Config, Test) ->
+    DataDir = ?config(data_dir, Config),
+    {ok, Code} = file:read_file(filename:join(DataDir, "checks.erl")),
+    [
+        "-eval",
+        binary_to_list(Code),
+        "-extra",
+        Test,
+        filename:join([lib_dir(Config), "exerl_test", "ebin"]),
+        filename:join(?config(priv_dir, Config), "old_protocol"),
+        DataDir
+        | [atom_to_list(Protocol) || Protocol <- protocols(Config)]
+    ].
+
+eval(Config, Test) ->
+    Paths = filelib:wildcard(filename:join([lib_dir(Config), "*", "ebin"])),
     run(
         os:find_executable("erl"),
-        ["-noshell", "-pa" | Paths] ++ ["-eval", Expression],
+        ["-noshell", "-pa" | Paths] ++ check_args(Config, Test),
         ?config(project, Config)
     ).
 
