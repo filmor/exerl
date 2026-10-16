@@ -10,6 +10,8 @@ This plugin provides the following functionality:
 
 ## Usage
 
+Requires Erlang/OTP 27 or newer.
+
 Add the plugin to your `rebar.config` and configure it:
 
 ```erlang
@@ -54,3 +56,38 @@ Erlang/OTP 26 [erts-14.2.5.4] [source] [64-bit] [smp:8:8] [ds:8:8:10] [async-thr
 Interactive Elixir (1.16.2) - press Ctrl+C to exit (type h() ENTER for help)
 iex(1)>
 ```
+
+## Tests
+
+Run `just test` (or `rebar3 do eunit, ct`). The Common Test suite builds the
+consumer project in `test/exerl_SUITE_data/exerl_test` with this checkout as its
+plugin. It checks mixed Erlang/Elixir compilation, Rebar and Mix dependencies,
+protocol consolidation, and release assembly and execution in isolated Erlang VMs.
+The fixture retains the dependencies and lockfile from the standalone test project,
+including Explorer's precompiled native library, so the first run needs network
+access to download dependencies and Elixir for the current OTP version. Use a
+current Rebar3 from `PATH`; the bundled Rebar3 3.24 cannot resolve all of the
+fixture's dependencies.
+
+Mix dependency builds run with an isolated project stack so Elixir 1.20 does not
+reuse another project's dependency cache. Compiler diagnostics are returned to
+Rebar as printable messages. The fixture's release configuration also excludes
+Elixir's original `JSON.Encoder` protocol, keeping the consolidated copy instead.
+
+GitHub Actions runs EUnit and Common Test on all supported combinations of
+OTP 27-29 and Elixir 1.17-1.20, with patch versions pinned in the workflow:
+
+| OTP | Elixir |
+| --- | --- |
+| 27 | 1.17, 1.18, 1.19, 1.20 |
+| 28 | 1.18, 1.19, 1.20 |
+| 29 | 1.20 |
+
+Set `EXERL_TEST_ELIXIR` to an exact version (for example `1.18.4`), use matching
+Erlang and Elixir executables on `PATH`, and use a fresh `REBAR_BASE_DIR` for
+each runtime pair to reproduce a matrix entry locally. Both the test profile
+and the consumer project use that version; only Elixir entries are removed
+from the fixture's copied lockfile.
+The suite verifies the Elixir version in the consumer VM. On OTP 29, CI
+suppresses the new catch and match-alias warnings because older dependencies
+treat warnings as errors.

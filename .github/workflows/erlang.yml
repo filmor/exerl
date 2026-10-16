@@ -13,18 +13,37 @@ jobs:
 
   build:
 
-    runs-on: ubuntu-latest
-
-    container:
-      image: erlang:25
+    name: OTP ${{ matrix.otp }} / Elixir ${{ matrix.elixir }}
+    runs-on: ubuntu-24.04
+    env:
+      # Older dependencies treat these new OTP 29 warnings as errors.
+      ERL_COMPILER_OPTIONS: ${{ matrix.otp == '29' && '[nowarn_deprecated_catch,nowarn_match_alias_pats]' || '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        otp: ['27', '28', '29']
+        elixir: ['1.17.3', '1.18.4', '1.19.6', '1.20.4']
+        exclude:
+          # These Elixir/OTP combinations have no published builds.
+          - {otp: '28', elixir: '1.17.3'}
+          - {otp: '29', elixir: '1.17.3'}
+          - {otp: '29', elixir: '1.18.4'}
+          - {otp: '29', elixir: '1.19.6'}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+    - uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ matrix.otp }}
+        elixir-version: ${{ matrix.elixir }}
+        rebar3-version: '3.27.0'
+    - name: Select test Elixir
+      run: echo "EXERL_TEST_ELIXIR=$(elixir -e 'IO.write(System.version())')" >> "$GITHUB_ENV"
     - name: Check format
       run: rebar3 fmt --check
     - name: Compile
       run: rebar3 compile
     - name: Self-link
-      run: "mkdir _checkouts && ln -s .. _checkouts/exerl"
+      run: "mkdir -p _checkouts && ln -s .. _checkouts/exerl"
     - name: Run tests
       run: rebar3 do eunit, ct

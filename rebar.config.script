@@ -1,0 +1,36 @@
+case os:getenv("EXERL_TEST_ELIXIR") of
+    false ->
+        CONFIG;
+    Version ->
+        Select = fun(Deps) ->
+            [
+                case Dep of
+                    {elixir_full, {ex, _}} ->
+                        {elixir_full, {ex, {tag, "v" ++ Version}}};
+                    _ ->
+                        Dep
+                end
+             || Dep <- Deps
+            ]
+        end,
+        [
+            case Entry of
+                {deps, Deps} ->
+                    {deps, Select(Deps)};
+                {profiles, Profiles} ->
+                    {profiles, [
+                        {Name, [
+                            case Option of
+                                {deps, Deps} -> {deps, Select(Deps)};
+                                _ -> Option
+                            end
+                         || Option <- Options
+                        ]}
+                     || {Name, Options} <- Profiles
+                    ]};
+                _ ->
+                    Entry
+            end
+         || Entry <- CONFIG
+        ]
+end.

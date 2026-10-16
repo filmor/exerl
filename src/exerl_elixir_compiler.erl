@@ -15,6 +15,12 @@
 
 % -include_lib("providers/include/providers.hrl").
 
+-type out_mappings() :: [{string(), file:filename()}].
+-type compilation_result() ::
+    {ok, [{file:filename(), file:filename(), map()}], [string()]}
+    | {error, [string()], [string()]}.
+
+-spec context(rebar_app_info:t()) -> map().
 context(AppInfo) ->
     try
         exerl_util:ensure_elixir(),
@@ -57,34 +63,41 @@ context(AppInfo) ->
             error(Reason)
     end.
 
+-spec needed_files(digraph:graph(), [file:filename()], out_mappings(), rebar_app_info:t()) ->
+    {{[], []}, {{[], [file:filename()]}, []}}.
 needed_files(_Graph, FoundFiles, _, _AppInfo) ->
     {{[], []}, {{[], FoundFiles}, []}}.
 
+-spec dependencies(file:filename(), file:filename(), [file:filename()]) -> [].
 dependencies(_Source, _SourceDir, _Dirs) ->
     [].
 
+-spec compile_and_track(file:filename(), out_mappings(), dict:dict(), list()) ->
+    compilation_result().
 compile_and_track(Source, [{_, OutDir}], _Config, _Opts) ->
     case
         ?Compiler:compile_to_path(
             [list_to_binary(Source)],
-            list_to_binary(OutDir)
+            list_to_binary(OutDir),
+            [{return_diagnostics, true}]
         )
     of
-        {ok, Modules, Warnings} ->
+        {ok, Modules, Info} ->
             rebar_api:debug("[exerl] Compiled ~p from ~s", [Modules, Source]),
             ModuleToPath = fun(Module) ->
                 filename:join(OutDir, atom_to_list(Module) ++ ".beam")
             end,
-            {ok, [{Source, ModuleToPath(Module), #{}} || Module <- Modules], Warnings};
-        {error, _, _} ->
-            rebar_api:debug("[exerl] Failed to compile ~s", [Source]),
-            error
+            {ok, [{Source, ModuleToPath(Module), #{}} || Module <- Modules], warnings(Info)};
+        {error, Errors, Info} ->
+            {error, [format_diagnostic(Error) || Error <- Errors], warnings(Info)}
     end.
 
+-spec compile(file:filename(), out_mappings(), dict:dict(), list()) -> no_return().
 compile(_, _, _, _) ->
     % Only added because the compiler behaviour expects it
     error(not_implemented).
 
+-spec clean([file:filename()], rebar_app_info:t()) -> ok.
 clean(Files, AppInfo) ->
     OutDir = rebar_app_info:ebin_dir(AppInfo),
 
@@ -116,3 +129,9 @@ clean(Files, AppInfo) ->
         ),
     rebar_file_utils:delete_each(ToDelete),
     ok.
+
+warnings(#{compile_warnings := Compile, runtime_warnings := Runtime}) ->
+    [format_diagnostic(Warning) || Warning <- Compile ++ Runtime].
+
+format_diagnostic(#{file := File, position := Position, message := Message}) ->
+    unicode:characters_to_list(io_lib:format("~ts:~tp: ~ts", [File, Position, Message])).

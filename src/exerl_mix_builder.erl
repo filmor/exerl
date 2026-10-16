@@ -22,35 +22,37 @@ build(AppInfo) ->
     rebar_api:debug("Switching cwd to ~p...", [NewCwd]),
     ok = file:set_cwd(NewCwd),
     try
-        rebar_api:debug("Ensuring hex is installed...", []),
-        ?Task:run(<<"local.hex">>, [<<"--force">>, <<"--if-missing">>]),
+        ?ProjectStack:on_clean_slate(fun() ->
+            rebar_api:debug("Ensuring hex is installed...", []),
+            ?Task:run(<<"local.hex">>, [<<"--force">>, <<"--if-missing">>]),
 
-        rebar_api:debug("Loading mix.exs...", []),
+            rebar_api:debug("Loading mix.exs...", []),
 
-        load_mix_exs(),
+            load_mix_exs(),
 
-        rebar_api:debug("Loading dependencies...", []),
-        ?Task:run(<<"loadpaths">>, [
-            <<"--no-archives-check">>,
-            <<"--no-compile">>,
-            <<"--no-optional-deps">>
-        ]),
+            rebar_api:debug("Loading dependencies...", []),
+            ?Task:run(<<"loadpaths">>, [
+                <<"--no-archives-check">>,
+                <<"--no-compile">>,
+                <<"--no-optional-deps">>
+            ]),
 
-        % rebar_api:debug("[exerl_build] Config: ~p", [?Project:config()]),
-        rebar_api:debug("[exerl_build] AppPath: ~p", [?Project:app_path(?Project:config())]),
-        rebar_api:debug("[exerl_build] CodePath: ~p", [?Project:compile_path(?Project:config())]),
+            % rebar_api:debug("[exerl_build] Config: ~p", [?Project:config()]),
+            rebar_api:debug("[exerl_build] AppPath: ~p", [?Project:app_path(?Project:config())]),
+            rebar_api:debug("[exerl_build] CodePath: ~p", [?Project:compile_path(?Project:config())]),
 
-        code:ensure_modules_loaded([?Logger]),
-        ?Task:run(<<"compile">>, [
-            <<"--from-mix-deps-compile">>,
-            <<"--no-archives-check">>,
-            <<"--no-warnings-as-errors">>,
-            <<"--no-code-path-pruning">>,
-            <<"--no-protocol-consolidation">>
-        ]),
+            code:ensure_modules_loaded([?Logger]),
+            ?Task:run(<<"compile">>, [
+                <<"--from-mix-deps-compile">>,
+                <<"--no-archives-check">>,
+                <<"--no-warnings-as-errors">>,
+                <<"--no-code-path-pruning">>,
+                <<"--no-protocol-consolidation">>
+            ]),
 
-        rebar_api:debug("Compiled", []),
-        ok
+            rebar_api:debug("Compiled", []),
+            ok
+        end)
     after
         NewLoadedModules = [M || {M, _} <- code:all_loaded()],
         Added = NewLoadedModules -- LoadedModules,
