@@ -54,6 +54,8 @@ do(State) ->
         [FirstApp | _] = ProjectApps ->
             OutDir = rebar_app_info:ebin_dir(FirstApp),
             filelib:ensure_path(OutDir),
+            DepPaths = [rebar_app_info:ebin_dir(App) || App <- Deps],
+            remove_stale_protocols(OutDir, DepPaths),
 
             % Through adding the code path (which has previously been updated with
             % Elixir's paths), this will also consolidate the builtin protocols.
@@ -69,10 +71,19 @@ do(State) ->
                     Impls = ?Protocol:extract_impls(Proto, Paths),
                     rebar_api:debug("Implementations of ~p:~n~p", [Proto, Impls]),
 
-                    {ok, Consolidated} = ?Protocol:consolidate(Proto, Impls),
+                    Consolidated =
+                        case ?Protocol:consolidate(Proto, Impls) of
+                            {ok, Binary} ->
+                                Binary;
+                            {error, Reason} ->
+                                rebar_api:abort(
+                                    "Cannot consolidate protocol ~p from ~p: ~p",
+                                    [Proto, code:which(Proto), Reason]
+                                )
+                        end,
 
                     Name = filename:join(OutDir, atom_to_list(Proto) ++ ".beam"),
-                    file:write_file(Name, Consolidated),
+                    ok = file:write_file(Name, Consolidated),
                     ok
                 end,
                 Protos
@@ -84,6 +95,46 @@ do(State) ->
 
             {ok, State}
     end.
+
+remove_stale_protocols(OutDir, DepPaths) ->
+    DepProtocols = ?Protocol:extract_protocols(DepPaths),
+    lists:foreach(
+        fun(Protocol) ->
+            Name = atom_to_list(Protocol) ++ ".beam",
+            Output = filename:join(OutDir, Name),
+            Originals = [
+                filename:join(Path, Name)
+             || Path <- DepPaths,
+                filename:absname(Path) =/= filename:absname(OutDir),
+                filelib:is_regular(filename:join(Path, Name))
+            ],
+            case Originals of
+                [Original | _] ->
+                    % Preserve project protocols that intentionally shadow a dependency module.
+                    case beam_source(Output) =:= beam_source(Original) of
+                        true ->
+                            rebar_api:info("Removing stale consolidated protocol ~p", [Protocol]),
+                            ok = file:delete(Output),
+                            case code:is_loaded(Protocol) of
+                                {file, Output} ->
+                                    {module, Protocol} = code:load_abs(filename:rootname(Original));
+                                _ ->
+                                    ok
+                            end;
+                        false ->
+                            ok
+                    end;
+                [] ->
+                    ok
+            end
+        end,
+        ?Protocol:extract_protocols([OutDir]) -- DepProtocols
+    ).
+
+beam_source(Path) ->
+    {ok, {_, [{compile_info, Info}]}} = beam_lib:chunks(Path, [compile_info]),
+    {source, Source} = lists:keyfind(source, 1, Info),
+    Source.
 
 -spec format_error(any()) -> iolist().
 format_error(Reason) ->

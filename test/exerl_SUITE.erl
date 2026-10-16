@@ -4,7 +4,13 @@
 -include_lib("stdlib/include/assert.hrl").
 
 -export([suite/0, all/0, init_per_suite/1, end_per_suite/1]).
--export([compiled_sources/1, mix_dependencies/1, consolidated_protocols/1, release/1]).
+-export([
+    compiled_sources/1,
+    mix_dependencies/1,
+    consolidated_protocols/1,
+    stale_dependency_protocol/1,
+    release/1
+]).
 
 -type config() :: [{atom(), term()}].
 
@@ -15,7 +21,13 @@ suite() ->
 
 -spec all() -> [atom()].
 all() ->
-    [compiled_sources, mix_dependencies, consolidated_protocols, release].
+    [
+        compiled_sources,
+        mix_dependencies,
+        consolidated_protocols,
+        stale_dependency_protocol,
+        release
+    ].
 
 -spec init_per_suite(config()) -> config().
 init_per_suite(Config) ->
@@ -100,6 +112,49 @@ consolidated_protocols(Config) ->
                 [Ebin, protocols(Config)]
             )
         )
+    ).
+
+-doc "Remove consolidated copies when a dependency changes a protocol into a regular module.".
+-spec stale_dependency_protocol(config()) -> ok.
+stale_dependency_protocol(Config) ->
+    Ebin = filename:join([lib_dir(Config), "exerl_test", "ebin"]),
+    Temp = filename:join(?config(priv_dir, Config), "old_protocol"),
+    ok = filelib:ensure_dir(filename:join(Temp, "placeholder")),
+    eval(
+        Config,
+        lib_dir(Config),
+        lists:flatten(
+            io_lib:format(
+                "{ok, _} = application:ensure_all_started(elixir),"
+                "Original = code:which('Elixir.Easter'),"
+                "{ok, {_, [{compile_info, Info}]}} = beam_lib:chunks(Original, [compile_info]),"
+                "{source, Source} = lists:keyfind(source, 1, Info),"
+                "[{Module, Beam}] = 'Elixir.Code':compile_string("
+                " ~w, list_to_binary(Source)),"
+                "Name = atom_to_list(Module) ++ \".beam\","
+                "ok = file:write_file(filename:join(~tp, Name), Beam),"
+                "true = code:add_patha(~tp),"
+                "true = code:soft_purge(Module),"
+                "{module, Module} = code:load_abs(filename:join(~tp, atom_to_list(Module))),"
+                "{ok, Consolidated} = 'Elixir.Protocol':consolidate(Module, []),"
+                "ok = file:write_file(filename:join(~tp, Name), Consolidated), halt(0).",
+                [
+                    ~"defprotocol Easter do\n  def stale(value)\nend\n",
+                    Temp,
+                    Temp,
+                    Temp,
+                    Ebin
+                ]
+            )
+        )
+    ),
+    run(?config(rebar, Config), ["consolidate_protocols"], ?config(project, Config)),
+    ?assertNot(filelib:is_regular(filename:join(Ebin, "Elixir.Easter.beam"))),
+    eval(
+        Config,
+        lib_dir(Config),
+        "{module, 'Elixir.Easter'} = code:ensure_loaded('Elixir.Easter'),"
+        "false = erlang:function_exported('Elixir.Easter', '__protocol__', 1), halt(0)."
     ).
 
 -doc "Assemble a release retaining consolidated protocols but excluding their originals.".

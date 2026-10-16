@@ -63,6 +63,8 @@ Run `just test` (or `rebar3 do eunit, ct`). The Common Test suite builds the
 consumer project in `test/exerl_SUITE_data/exerl_test` with this checkout as its
 plugin. It checks mixed Erlang/Elixir compilation, Rebar and Mix dependencies,
 protocol consolidation, and release assembly and execution in isolated Erlang VMs.
+Stale consolidated copies are removed when a dependency replaces a protocol with
+a regular module, so incremental builds do not rediscover the obsolete protocol.
 The fixture retains the dependencies and lockfile from the standalone test project,
 including Explorer's precompiled native library, so the first run needs network
 access to download dependencies and Elixir for the current OTP version. Use a
