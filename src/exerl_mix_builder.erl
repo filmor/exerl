@@ -30,7 +30,11 @@ build(AppInfo) ->
         load_mix_exs(),
 
         rebar_api:debug("Loading dependencies...", []),
-        ?Task:run(<<"loadpaths">>, [<<"--no-archives-check">>, <<"--no-compile">>]),
+        ?Task:run(<<"loadpaths">>, [
+            <<"--no-archives-check">>,
+            <<"--no-compile">>,
+            <<"--no-optional-deps">>
+        ]),
 
         % rebar_api:debug("[exerl_build] Config: ~p", [?Project:config()]),
         rebar_api:debug("[exerl_build] AppPath: ~p", [?Project:app_path(?Project:config())]),

@@ -41,6 +41,8 @@ init(State) ->
     os:putenv("MIX_DEPS_PATH", ensure_string(filename:absname(DepsDir))),
     os:putenv("MIX_BUILD_PATH", ensure_string(filename:absname(BaseDir))),
 
+    ok = exerl_mix_metadata:prepare(State),
+
     % Delay the actual startup of the apps until the deps are loaded such that
     % we can load the elixir deps that are specified by the user!
 
@@ -50,7 +52,9 @@ init(State) ->
     {ok, State4} = exerl_dep:init(State3),
     {ok, State5} = exerl_prv_iex:init(State4),
 
-    {ok, State5}.
+    State6 = rebar_state:add_resource(State5, {git, exerl_mix_resource}),
+    State7 = rebar_state:add_resource(State6, {git_subdir, exerl_mix_resource}),
+    {ok, State7}.
 
 ensure_string(V) ->
     exerl_util:ensure_string(V).
