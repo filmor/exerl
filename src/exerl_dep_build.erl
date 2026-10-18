@@ -16,7 +16,7 @@
 
 -record(build, {
     name :: binary(),
-    version :: verl:version_t() | undefined,
+    version :: rebar_semver:version() | undefined,
     version_raw :: binary() | undefined,
     otp_version :: non_neg_integer() | undefined,
     commit :: binary(),
@@ -35,7 +35,7 @@ get_releases(Builds) ->
         Build
      || Build <- Builds,
         Build#build.otp_version =:= OtpVersion,
-        maps:get(pre, Build#build.version) =:= []
+        not is_prerelease(Build#build.version_raw)
     ].
 
 version(#build{version = V}) -> V.
@@ -70,7 +70,8 @@ make_record(RefOtp, Commit, Timestamp, Sha256Sum) ->
 expand_record(Build = #build{name = RefOtp}) ->
     case string:split(RefOtp, "-otp-") of
         [Ref, Otp] ->
-            case verl:parse(string:trim(Ref, leading, "v")) of
+            VersionRaw = list_to_binary(string:trim(Ref, leading, "v")),
+            case rebar_semver:parse_version(VersionRaw) of
                 {ok, Version} ->
                     {true, Build#build{
                         name = Ref,
@@ -85,6 +86,10 @@ expand_record(Build = #build{name = RefOtp}) ->
         _ ->
             false
     end.
+
+is_prerelease(Version) ->
+    [VersionWithoutBuild | _] = binary:split(Version, <<"+">>),
+    binary:match(VersionWithoutBuild, <<"-">>) =/= nomatch.
 
 % find_newest_version() ->
 %     find_newest_version([]).

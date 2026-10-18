@@ -140,15 +140,14 @@ extract_lib_from_pkg(Filename, App, Dest) ->
 find_matching({tag, Tag}, _Builds) ->
     {tag, list_to_binary([Tag])};
 find_matching(Requirement, Builds) ->
-    {ok, Req0} = verl:parse_requirement(list_to_binary("~> " ++ Requirement)),
-    Req1 = verl:compile_requirement(Req0),
+    {ok, Req} = rebar_semver:parse_constraint(list_to_binary("~> " ++ Requirement)),
     rebar_api:debug("Trying to find release from requirement ~s", [Requirement]),
-    Builds1 = matching_builds(Req1, exerl_dep_builds:builds(Builds)),
+    Builds1 = matching_builds(Req, exerl_dep_builds:builds(Builds)),
     Builds2 =
         case Builds1 of
             [] ->
                 % Refresh stale builds cache once before failing.
-                matching_builds(Req1, exerl_dep_builds:builds(exerl_dep_builds:update(Builds)));
+                matching_builds(Req, exerl_dep_builds:builds(exerl_dep_builds:update(Builds)));
             _ ->
                 Builds1
         end,
@@ -162,7 +161,7 @@ find_matching(Requirement, Builds) ->
 
     [BestMatch | _] = lists:sort(
         fun(Lhs, Rhs) ->
-            verl:gt(exerl_dep_build:version(Lhs), exerl_dep_build:version(Rhs)) =:= true
+            rebar_semver:cmp(exerl_dep_build:version(Lhs), exerl_dep_build:version(Rhs)) =:= gt
         end,
         Builds2
     ),
@@ -173,7 +172,7 @@ matching_builds(Requirement, Builds) ->
     [
         Build
      || Build <- Builds,
-        verl:is_match(exerl_dep_build:version(Build), Requirement)
+        rebar_semver:match(exerl_dep_build:version(Build), Requirement)
     ].
 
 -spec ensure_pkg(rebar_state:t(), exerl_dep_build:t()) -> file:filename_all().

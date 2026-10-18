@@ -8,27 +8,11 @@
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
+    ensure_rebar_version(),
+
     os:putenv("MIX_ENV", "prod"),
     BaseDir = rebar_dir:base_dir(State),
     DepsDir = filename:join(BaseDir, "lib"),
-
-    case application:get_key(rebar, vsn) of
-        {ok, Vsn} ->
-            {ok, Req} = verl:parse_requirement(<<">= 3.23.0">>),
-            case verl:is_match(list_to_binary(Vsn), Req) of
-                false ->
-                    rebar_api:warn(
-                        "Rebar3 version ~s does not support dependencies like "
-                        "\"1.0 or 2.0\", please upgrade to at least 3.23.0 if "
-                        "you are seeing errors that mention a version like this",
-                        [Vsn]
-                    );
-                _ ->
-                    ok
-            end;
-        _ ->
-            ok
-    end,
 
     try
         ScriptName = escript:script_name(),
@@ -55,6 +39,33 @@ init(State) ->
     State6 = rebar_state:add_resource(State5, {git, exerl_mix_resource}),
     State7 = rebar_state:add_resource(State6, {git_subdir, exerl_mix_resource}),
     {ok, State7}.
+
+ensure_rebar_version() ->
+    case application:get_key(rebar, vsn) of
+        {ok, Vsn} when is_list(Vsn) ->
+            case code:ensure_loaded(rebar_semver) of
+                {module, rebar_semver} ->
+                    {ok, Version} = rebar_semver:parse_version(list_to_binary(Vsn)),
+                    {ok, Minimum} = rebar_semver:parse_constraint(<<">= 3.26.0">>),
+                    case rebar_semver:match(Version, Minimum) of
+                        true ->
+                            ok;
+                        false ->
+                            unsupported_rebar_version(Vsn)
+                    end;
+                {error, _} ->
+                    unsupported_rebar_version(Vsn)
+            end;
+        _ ->
+            rebar_api:abort("[exerl] Unable to determine the Rebar3 version", [])
+    end.
+
+unsupported_rebar_version(Vsn) ->
+    rebar_api:abort(
+        "[exerl] Rebar3 version ~s is not supported; "
+        "upgrade to at least 3.26.0",
+        [Vsn]
+    ).
 
 ensure_string(V) ->
     exerl_util:ensure_string(V).

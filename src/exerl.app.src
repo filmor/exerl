@@ -5,8 +5,7 @@
     {applications, [
         kernel,
         stdlib,
-        inets,
-        verl
+        inets
     ]},
     {env, []},
     {modules, []},
